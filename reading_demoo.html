@@ -16409,5 +16409,12 @@ p.wpx-title{display:flex!important;align-items:center;gap:12px;margin:0 0 12px!i
     paint(); setInterval(paint, 10 * 60 * 1000);
 })();
 </script>
+<style id="fin-covers-stars-css">
+/* Finished tab, Covers view: stars only (no number), a little bigger. The stars keep their "N out of 5" label for screen readers. */
+#reviews-list[data-view=covers]>div:not(.vw-open) .fsx-num{display:none!important}
+#reviews-list[data-view=covers]>div:not(.vw-open) .fsx-stars{gap:2px!important}
+#reviews-list[data-view=covers]>div:not(.vw-open) .fsx-st{--s:14px!important}
+@media(max-width:480px){#reviews-list[data-view=covers]>div:not(.vw-open) .fsx-st{--s:12px!important}#reviews-list[data-view=covers]>div:not(.vw-open) .fsx-stars{gap:1px!important}}
+</style>
 </body>
 </html>
