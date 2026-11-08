@@ -3252,7 +3252,7 @@ function authorLinks(b) { return authorsOf(b).map(n => `<button type="button" da
                     <div class="text-xs font-bold text-[rgb(var(--c-3e4a3d))] leading-tight">${c.label}</div>
                     <div class="text-[10px] text-[rgb(var(--c-6b705c))] leading-tight">${c.hint}</div>
                 </div>
-                <div class="flex gap-1">${[1, 2, 3, 4, 5].map(n => `<button type="button" onclick="setCatRating('${c.key}', ${n})" class="w-4 h-4 rounded-full border-2 border-[rgb(var(--c-8a9a5b))] transition ${n <= (catRatings[c.key] || 0) ? 'bg-[rgb(var(--c-8a9a5b))]' : 'bg-white'}" title="${n}"></button>`).join('')}</div>
+                <div class="fr-dots">${[1, 2, 3, 4, 5].map(n => `<button type="button" onclick="setCatRating('${c.key}', ${n})" class="fr-dot${n <= (catRatings[c.key] || 0) ? ' on' : ''}" title="${n}" aria-label="${c.label} ${n} of 5"></button>`).join('')}</div>
             </div>`).join('');
         const avg = calcAvg(catRatings);
         document.getElementById('modal-avg').innerText = avg ? `★ ${fmtRating(avg)} / 5 (${Object.keys(catRatings).length} rated)` : '—';
@@ -12902,6 +12902,11 @@ div:has(>#tab-btn-backlog){flex-shrink:0}
 #review-modal #cover-preview:hover{transform:rotate(2deg) scale(1.06)}
 #review-modal .card button.text-\[10px\]{border-radius:99px!important;padding:5px 12px!important;font-size:11px!important}
 .rm-card #category-ratings{gap:9px 24px}
+/* fairy rating dots: own CSS so they always show, even when the Tailwind CDN has not styled them */
+#category-ratings .fr-dots{display:flex!important;gap:4px;flex:none}
+#category-ratings .fr-dot{display:block!important;width:16px!important;height:16px!important;min-width:16px;padding:0!important;margin:0;border-radius:99px!important;border:2px solid rgb(var(--c-8a9a5b))!important;background:#fff!important;cursor:pointer;opacity:1!important;visibility:visible!important;transition:background .15s,transform .15s}
+#category-ratings .fr-dot.on{background:rgb(var(--c-8a9a5b))!important}
+#category-ratings .fr-dot:hover{transform:scale(1.15)}
 .rm-card>div>div.flex.justify-between{margin-bottom:6px}
 #rm-extras .x-sec{margin:0}
 #rr-box:empty{display:none}
