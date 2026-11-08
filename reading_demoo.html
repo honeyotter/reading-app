@@ -1024,7 +1024,7 @@ html[data-theme=cocoa]{--c-322323:52 34 37;--c-3c2828:62 38 42;--c-3e4a3d:78 68 
                 </div>
 
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
-                    <select id="f-status" onchange="setMetaFilter()" class="min-w-0 bg-white/60 border border-[rgb(var(--c-e8c4c4))] rounded-lg px-2 py-1.5 text-xs outline-none focus:border-[rgb(var(--c-8a9a5b))]"><option value="">All statuses</option><option value="none">📖 Regular</option><option value="onhold">⏸️ On hold</option><option value="rereading">🔁 Rereading</option></select>
+                    <select id="f-status" onchange="setMetaFilter()" class="min-w-0 bg-white/60 border border-[rgb(var(--c-e8c4c4))] rounded-lg px-2 py-1.5 text-xs outline-none focus:border-[rgb(var(--c-8a9a5b))]"><option value="">All statuses</option><option value="none">📖 Regular</option><option value="onhold">⏸️ On hold</option><option value="rereading">🔁 Rereading</option><option value="later">🌙 Saved for later</option></select>
                     <select id="f-tags" onchange="setMetaFilter()" class="min-w-0 bg-white/60 border border-[rgb(var(--c-e8c4c4))] rounded-lg px-2 py-1.5 text-xs outline-none focus:border-[rgb(var(--c-8a9a5b))]"><option value="">All tags</option></select>
                     <select id="f-warnings" onchange="setMetaFilter()" class="min-w-0 bg-white/60 border border-[rgb(var(--c-e8c4c4))] rounded-lg px-2 py-1.5 text-xs outline-none focus:border-[rgb(var(--c-8a9a5b))]"><option value="">All warnings</option></select>
                     <select id="f-vibes" onchange="setMetaFilter()" class="min-w-0 bg-white/60 border border-[rgb(var(--c-e8c4c4))] rounded-lg px-2 py-1.5 text-xs outline-none focus:border-[rgb(var(--c-8a9a5b))]"><option value="">All vibes</option></select>
@@ -1794,6 +1794,36 @@ function authorLinks(b) { return authorsOf(b).map(n => `<button type="button" da
     let wkMins = { on: false, m: ['', '', '', '', '', '', ''] };
     try { const w = JSON.parse(localStorage.getItem(WK_KEY)); if (w && Array.isArray(w.m) && w.m.length === 7) wkMins = w; } catch (e) {}
     function minsFor(d, def) { if (!wkMins.on) return def; const v = wkMins.m[d.getDay()]; return (v === '' || v == null || isNaN(+v)) ? def : Math.max(0, +v); }
+    // ===== Vacation days: the Weekly Path skips them like rest days, and they never break your streak =====
+    var VAC_KEY = 'enchantedVacation';   // [{ id, from: 'YYYY-MM-DD', to: 'YYYY-MM-DD', label }]
+    var vacList = (function () { try { var v = JSON.parse(localStorage.getItem(VAC_KEY)); return Array.isArray(v) ? v : []; } catch (e) { return []; } })();
+    var vacSet = new Set();
+    function vacKeyOf(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+    function vacRebuild() {
+        vacSet = new Set();
+        vacList.forEach(function (v) {
+            if (!v || !/^\d{4}-\d{2}-\d{2}$/.test(v.from || '')) return;
+            var to = /^\d{4}-\d{2}-\d{2}$/.test(v.to || '') && v.to >= v.from ? v.to : v.from;
+            var d = new Date(v.from + 'T00:00:00');
+            for (var k = 0; k < 400 && vacKeyOf(d) <= to; k++) { vacSet.add(vacKeyOf(d)); d.setDate(d.getDate() + 1); }
+        });
+    }
+    vacRebuild();
+    function isVac(d) { return vacSet.has(typeof d === 'string' ? d.slice(0, 10) : vacKeyOf(d)); }
+    function saveVac() { try { localStorage.setItem(VAC_KEY, JSON.stringify(vacList)); } catch (e) {} vacRebuild(); }
+    // the days between two check-ins (exclusive) are all vacation, so the streak carries across them
+    function vacBridge(prevKey, nextKey) {
+        var d = new Date(prevKey + 'T00:00:00'); d.setDate(d.getDate() + 1);
+        for (var k = 0; k < 400; k++) { var key = vacKeyOf(d); if (key >= nextKey) return true; if (!vacSet.has(key)) return false; d.setDate(d.getDate() + 1); }
+        return false;
+    }
+    // ===== Week lock: a book is read inside the 7 days starting on b.lockWeek ('YYYY-MM-DD'); the rest of the plan flows around it =====
+    function lockRange(b, start) {
+        if (!b.lockWeek || !/^\d{4}-\d{2}-\d{2}$/.test(b.lockWeek)) return null;
+        var ls = new Date(b.lockWeek + 'T00:00:00'), le = new Date(ls); le.setDate(le.getDate() + 6);
+        if (le < start) return null;   // that week is over: the book just takes its normal place again
+        return { ls: ls < start ? new Date(start) : ls, le: le };
+    }
 
     function normalizeBook(b) {
         return {
@@ -2852,7 +2882,7 @@ function authorLinks(b) { return authorsOf(b).map(n => `<button type="button" da
     var schedVer = 0, schedMemo = null;   // memoised: one build serves planFinishInfo(), generateSchedule() and every Unread redraw
     function schedKey(dailyMins, cutKey) {
         const sv = document.getElementById('start-date').value;
-        return [dailyMins, sv, cutKey, new Date().toDateString(), [...restDays].sort().join(), JSON.stringify(wkMins), schedVer, books.map(b => [b.id, b.read ? 1 : 0, b.status || '', b.gyPlan ? 1 : 0, b.manual ? 1 : 0, b.minutesRead, b.duration, b.totalPages || 0, b.pagesRead || 0, (b.sessions || []).length, b.title, b.coverColor, b.vault ? 1 : 0, b.planYear || 0].join('|')).join('~')].join('#');
+        return [dailyMins, sv, cutKey, new Date().toDateString(), [...restDays].sort().join(), JSON.stringify(wkMins), [...vacSet].sort().join(), schedVer, books.map(b => [b.id, b.read ? 1 : 0, b.status || '', b.gyPlan ? 1 : 0, b.manual ? 1 : 0, b.minutesRead, b.duration, b.totalPages || 0, b.pagesRead || 0, (b.sessions || []).length, b.title, b.coverColor, b.vault ? 1 : 0, b.planYear || 0, b.lockWeek || ''].join('|')).join('~')].join('#');
     }
     // The day the LAST planned book gets finished at the daily minutes in the box (null when nothing is planned). Cached; it never depends on the cutoff.
     var autoFinMemo = null, autoFinBusy = false;
@@ -2889,12 +2919,22 @@ function authorLinks(b) { return authorsOf(b).map(n => `<button type="button" da
         cd.setHours(0, 0, 0, 0);
         { const td = new Date(); td.setHours(0, 0, 0, 0); if (cd < td) cd = td; }   // a start date in the past can't be read in: begin today
         const start = new Date(cd);
-        books.forEach((b, i) => { if (!inPlan(b)) return; if (b.manual || b.minutesRead < b.duration) q.push({ b, i, remaining: remainingMinutes(b) }); else finish.set(i, new Date(start)); });
+        const locked = [];   // books locked to a week: they get that week's minutes first
+        books.forEach((b, i) => { if (!inPlan(b)) return; if (b.manual || b.minutesRead < b.duration) { const o = { b, i, remaining: remainingMinutes(b) }, lr = lockRange(b, start); if (lr) { o.ls = lr.ls; o.le = lr.le; locked.push(o); } else q.push(o); } else finish.set(i, new Date(start)); });
+        const offDay = d => (restDays.size < 7 && restDays.has(d.getDay())) || isVac(d) || minsFor(d, dailyMins) <= 0;
+        const daysLeftIn = (from, to) => { let n = 0; for (const d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) if (!offDay(d)) n++; return Math.max(1, n); };
         let ci = 0, dc = 0;
-        while (ci < q.length && dc < 3000) {
-            if (restDays.size < 7 && restDays.has(cd.getDay())) { days.push({ date: new Date(cd), dateStr: formatDateString(cd), tasks: [], rest: true }); cd.setDate(cd.getDate() + 1); dc++; continue; }
+        while ((ci < q.length || locked.some(o => o.remaining > 0)) && dc < 3000) {
+            if ((restDays.size < 7 && restDays.has(cd.getDay())) || isVac(cd)) { days.push({ date: new Date(cd), dateStr: formatDateString(cd), tasks: [], rest: true, vac: isVac(cd) || undefined }); cd.setDate(cd.getDate() + 1); dc++; continue; }
             let left = minsFor(cd, dailyMins); const cap = left; const tasks = [];
             if (cap <= 0) { days.push({ date: new Date(cd), dateStr: formatDateString(cd), tasks: [], rest: true }); cd.setDate(cd.getDate() + 1); dc++; continue; }
+            for (const o of locked) {   // spread a locked book evenly over the reading days left in its week (or all of the day once the week is over)
+                if (left <= 0 || o.remaining <= 0 || cd < o.ls) continue;
+                const m = Math.min(left, o.remaining, cd > o.le ? o.remaining : Math.ceil(o.remaining / daysLeftIn(cd, o.le))), book = o.b;
+                o.remaining -= m; left -= m;
+                if (o.remaining <= 0) { tasks.push({ title: book.title, timeStr: `${m}m (Finish ✨)`, mins: m, color: book.coverColor, cover: book.cover, fin: true, bi: o.i, lock: true }); finish.set(o.i, new Date(cd)); }
+                else tasks.push({ title: book.title, timeStr: `${m}m`, mins: m, color: book.coverColor, cover: book.cover, bi: o.i, lock: true });
+            }
             while (left > 0 && ci < q.length) {
                 const o = q[ci], book = o.b;
                 if (o.remaining <= left) { tasks.push({ title: book.title, timeStr: `${o.remaining}m (Finish ✨)`, mins: o.remaining, color: book.coverColor, cover: book.cover, fin: true, bi: o.i }); left -= o.remaining; o.remaining = 0; finish.set(o.i, new Date(cd)); ci++; }
@@ -2903,7 +2943,7 @@ function authorLinks(b) { return authorsOf(b).map(n => `<button type="button" da
             days.push({ date: new Date(cd), dateStr: formatDateString(cd), tasks, total: cap - left });
             cd.setDate(cd.getDate() + 1); dc++;
         }
-        return { days: trimToCutoff(days, finish), finish, empty: q.length === 0 };
+        return { days: trimToCutoff(days, finish), finish, empty: q.length === 0 && locked.length === 0 };
     }
 
     function generateSchedule() {
@@ -2993,14 +3033,14 @@ function authorLinks(b) { return authorsOf(b).map(n => `<button type="button" da
         let current = 0;
         let d = new Date();
         if (!checkIns.has(dateKey(d))) d = shiftDay(d, -1);
-        while (checkIns.has(dateKey(d))) { current++; d = shiftDay(d, -1); }
+        for (let k = 0; k < 4000 && (checkIns.has(dateKey(d)) || isVac(d)); k++) { if (checkIns.has(dateKey(d))) current++; d = shiftDay(d, -1); }   // vacation days are skipped, never break it
 
         // Best streak across all history
         let best = 0, run = 0, prev = null;
         [...checkIns].sort().forEach(k => {
             const [y, m, day] = k.split('-').map(Number);
             const cur = new Date(y, m - 1, day);
-            run = (prev && dateKey(shiftDay(prev, 1)) === k) ? run + 1 : 1;
+            run = (prev && (dateKey(shiftDay(prev, 1)) === k || vacBridge(dateKey(prev), k))) ? run + 1 : 1;
             best = Math.max(best, run);
             prev = cur;
         });
@@ -4052,8 +4092,12 @@ window.SAFE = SAFE;
     const isProg = b => !b.vault;   // your plan can run over several years, so being programmed no longer expires at New Year
     const inPlanAll = b => !b.read && b.status !== 'onhold' && (b.status !== 'abandoned' || !!b.gyPlan);
     const inPlan = b => inPlanAll(b) && isProg(b);
-    const inNow = b => inPlanAll(b) && b.status !== 'abandoned';   // graveyard books visiting the plan are never "reading now"
-    const STATUSES = [['', '📖 Regular'], ['onhold', '⏸️ On hold'], ['abandoned', '🚫 Abandoned'], ['rereading', '🔁 Rereading']];
+    // 🌙 "saved for later": a started book keeps its progress and its place in the plan, but stays off Reading Now
+    // until the plan reaches it (it becomes the first planned book still to read), then it wakes up by itself
+    const laterAwake = b => books.find(x => inPlan(x) && (x.manual || x.minutesRead < x.duration)) === b;
+    const isParked = b => b.status === 'later' && !b.read && !laterAwake(b);
+    const inNow = b => inPlanAll(b) && b.status !== 'abandoned' && !isParked(b);   // graveyard books visiting the plan are never "reading now"
+    const STATUSES = [['', '📖 Regular'], ['onhold', '⏸️ On hold'], ['abandoned', '🚫 Abandoned'], ['rereading', '🔁 Rereading'], ['later', '🌙 Saved for later']];
     const LISTS = { tags: ['# Trope tags', 'e.g. enemies to lovers (Enter to add)'], warnings: ['⚠️ Content warnings', 'e.g. violence, character death'], vibes: ['✨ Vibes', 'e.g. cozy, bittersweet, chaotic'] };
     const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     let modalLists = { tags: [], warnings: [], vibes: [], authors: [] };
@@ -4490,7 +4534,7 @@ window.SAFE = SAFE;
             const title = `<span class="text-xs"><strong class="font-serif text-[rgb(var(--c-3e4a3d))]">${wd}</strong> <span class="text-[rgb(var(--c-6b705c))]">${md}</span>${badge}</span>`;
             if (d.rest) return `<div class="rounded-xl border border-dashed border-[rgb(var(--c-e8c4c4))] bg-white/40 p-2.5 flex justify-between items-center ${past ? 'opacity-60' : ''}">${title}<span class="text-[11px] text-[rgb(var(--c-6b705c))]">🌙 Rest day</span></div>`;
             const bar = d.tasks.map(t => `<span class="h-full" style="width:${t.mins / Math.max(goalM, d.total) * 100}%;background:${t.color}"></span>`).join('');
-            const rows = d.tasks.map(t => `<div class="flex items-center gap-2 text-[11px]"><span class="w-2.5 h-2.5 rounded-sm shrink-0 border border-black/10" style="background:${t.color}"></span><span class="font-bold text-[rgb(var(--c-3e4a3d))] truncate flex-1">${esc(t.title)}</span><span class="text-[rgb(var(--c-6b705c))] shrink-0">${t.mins}m${t.fin ? ' ✨' : ''}</span></div>`).join('');
+            const rows = d.tasks.map(t => `<div class="flex items-center gap-2 text-[11px]"><span class="w-2.5 h-2.5 rounded-sm shrink-0 border border-black/10" style="background:${t.color}"></span><span class="font-bold text-[rgb(var(--c-3e4a3d))] truncate flex-1">${t.lock ? '📌 ' : ''}${esc(t.title)}</span><span class="text-[rgb(var(--c-6b705c))] shrink-0">${t.mins}m${t.fin ? ' ✨' : ''}</span></div>`).join('');
             const st = (isT || past) ? `<span class="text-[10px] font-bold ${read >= goalM ? 'text-[rgb(var(--c-5f6e3a))]' : 'text-[rgb(var(--c-6b705c))]'}">${read >= goalM ? '✓ ' : ''}read ${read}/${d.total}m</span>` : `<span class="text-[10px] font-bold text-[rgb(var(--c-6b705c))]">${d.total}m</span>`;
             return `<div class="rounded-xl border p-2.5 ${isT ? 'border-[rgb(var(--c-8a9a5b))] ring-2 ring-[rgb(var(--c-8a9a5b)/0.25)] bg-white' : 'border-[rgb(var(--c-e8c4c4))] bg-white/70'} ${past ? 'opacity-70' : ''}"><div class="flex justify-between items-center gap-2">${title}${st}</div><div class="flex h-2 rounded-full overflow-hidden bg-[rgb(var(--c-e0e5d8))] my-1.5">${bar}</div><div class="flex flex-col gap-1">${rows}</div></div>`;
         }).join('');
@@ -5677,16 +5721,16 @@ body{padding-left:62px}
         const st = d => { const k = dateKey(d.date), read = dailyLog[k] || 0; return k === tk ? 'now' : k < tk ? (d.rest ? 'rest' : read >= goalM || read >= d.total ? 'done' : 'miss') : (d.rest ? 'rest' : ''); };
         let top = `<div class="tr-ban"><span class="sun">☀️</span><span class="cl">☁️</span><h4>🌿 Your reading trail</h4><p>${f(days[0].date, { month: 'short', day: 'numeric' })} – ${f(days[days.length - 1].date, { month: 'short', day: 'numeric' })} · ${goalM} min/day</p></div>`;
         if (hero) { const isT = dateKey(hero.date) === tk, read = isT ? (dailyLog[tk] || 0) : 0;
-            top += `<div class="tr-hero"><div class="tr-ring" style="--p:${Math.min(100, Math.round(read / Math.max(1, hero.total) * 100))}"><b>${read}</b><span>/ ${hero.total}m</span></div><div style="flex:1;min-width:0"><div class="tr-kick">${isT ? '📍 Today’s quest' : '🌱 Up next · ' + f(hero.date, { weekday: 'short', month: 'short', day: 'numeric' })}</div><div class="tr-bks">${hero.tasks.map(t => `<div class="tr-bk"><i class="tr-cv" style="${coverStyle({ coverColor: t.color, cover: t.cover })}"></i><b>${esc(t.title)}</b><span>${t.mins}m${t.fin ? ' 🏁' : ''}</span></div>`).join('')}</div></div></div>`; }
+            top += `<div class="tr-hero"><div class="tr-ring" style="--p:${Math.min(100, Math.round(read / Math.max(1, hero.total) * 100))}"><b>${read}</b><span>/ ${hero.total}m</span></div><div style="flex:1;min-width:0"><div class="tr-kick">${isT ? '📍 Today’s quest' : '🌱 Up next · ' + f(hero.date, { weekday: 'short', month: 'short', day: 'numeric' })}</div><div class="tr-bks">${hero.tasks.map(t => `<div class="tr-bk"><i class="tr-cv" style="${coverStyle({ coverColor: t.color, cover: t.cover })}"></i><b>${t.lock ? '📌 ' : ''}${esc(t.title)}</b><span>${t.mins}m${t.fin ? ' 🏁' : ''}</span></div>`).join('')}</div></div></div>`; }
         top += `<div class="tr-signs">${[['🏰', f(last.date, { month: 'short', day: 'numeric', year: 'numeric' }), 'Finish line'], ['🍄', rd, `Reading days (${all.length - rd} rest)`], ['📜', formatTime(left), 'Still to read'], ['🌸', formatTime(wk), 'This week']].map(([e, v, l]) => `<div class="tr-sign"><em>${e}</em><b>${v}</b><span>${l}</span></div>`).join('')}</div>`;
         if (fins.length) top += `<div class="tr-fc">🏁 Finish dates:${fins.slice(0, 6).map(x => `<span class="tr-chip"><i style="background:${x.color}"></i>${esc(x.title.length > 24 ? x.title.slice(0, 23) + '…' : x.title)} <b>${f(x.date, { month: 'short', day: 'numeric' })}</b></span>`).join('')}${fins.length > 6 ? `<span>+${fins.length - 6} more</span>` : ''}</div>`;
         top += `<div class="tr-rib">${days.map(d => `<button class="tr-st ${st(d)}" title="${f(d.date, { weekday: 'long', month: 'short', day: 'numeric' })}" onclick="document.getElementById('tr-${dateKey(d.date)}').scrollIntoView({behavior:'smooth',block:'center'})">${st(d) === 'done' ? '✓' : f(d.date, { weekday: 'narrow' })}</button>`).join('')}</div>`;
         const rows = days.map((d, j) => {
             const k = dateKey(d.date), s = st(d), read = dailyLog[k] || 0, side = j % 2 ? 'R' : 'L', gi = all.indexOf(d);
             const wd = f(d.date, { weekday: 'long' }), md = f(d.date, { month: 'short', day: 'numeric' });
-            if (d.rest) return `<div class="tr-d ${side}" id="tr-${k}"><div class="tr-n rest">🌙</div><div class="tr-rest">⛺ <b>${wd}</b> ${md} · rest day, sleep in 💤</div><div class="tr-dec"><em>${DEC[gi % 8]}</em></div></div>`;
+            if (d.rest) return `<div class="tr-d ${side}" id="tr-${k}"><div class="tr-n rest">🌙</div><div class="tr-rest">${d.vac ? '🏖️' : '⛺'} <b>${wd}</b> ${md} · ${d.vac ? 'vacation, enjoy your trip 🌴' : 'rest day, sleep in 💤'}</div><div class="tr-dec"><em>${DEC[gi % 8]}</em></div></div>`;
             const bar = d.tasks.map(t => `<span title="${esc(t.title)}" style="width:${t.mins / Math.max(goalM, d.total) * 100}%;background:${t.color}"></span>`).join('');
-            const bk = '<div class="tr-bks">' + d.tasks.map(t => `<div class="tr-bk"><i class="tr-cv" style="${coverStyle({ coverColor: t.color, cover: t.cover })}"></i><b>${esc(t.title)}</b><span>${t.mins}m${t.fin ? ' 🏁' : ''}</span></div>`).join('') + '</div>';
+            const bk = '<div class="tr-bks">' + d.tasks.map(t => `<div class="tr-bk"><i class="tr-cv" style="${coverStyle({ coverColor: t.color, cover: t.cover })}"></i><b>${t.lock ? '📌 ' : ''}${esc(t.title)}</b><span>${t.mins}m${t.fin ? ' 🏁' : ''}</span></div>`).join('') + '</div>';
             const fl = d.tasks.filter(t => t.fin), stat = (s === 'now' || s === 'done' || s === 'miss') ? `${s === 'done' ? '✓ ' : ''}read ${read}/${d.total}m` : `${d.total}m`;
             const dec = fl.length ? `<div class="tr-dec"><em>🏁</em><span class="fl">Finish: ${fl.map(t => esc(t.title)).join(', ')}</span></div>` : `<div class="tr-dec"><em>${DEC[gi % 8]}</em>${CAP[gi % 8]}</div>`;
             return `<div class="tr-d ${side}" id="tr-${k}"><div class="tr-n ${s}">${s === 'done' ? '✓' : d.date.getDate()}</div><div class="tr-c ${s}"><div class="tr-ch"><strong>${wd}</strong><span>${md}</span>${s === 'now' ? '<span class="tr-here">You are here</span>' : ''}<em>${stat}</em></div><div class="tr-bar">${bar}</div>${bk}</div>${dec}</div>`;
@@ -5720,7 +5764,7 @@ body{padding-left:62px}
         let read = 0, rest = 0, wsum = 0;
         const base0 = parseInt($('daily-minutes').value) || 60;
         for (const d = new Date(start); d <= target; d.setDate(d.getDate() + 1)) {
-            const isRest = restDays.size < 7 && restDays.has(d.getDay()), w = minsFor(d, base0);
+            const isRest = (restDays.size < 7 && restDays.has(d.getDay())) || isVac(d), w = minsFor(d, base0);
             if (isRest || w <= 0) rest++; else { read++; wsum += w; }
         }
         if (!read) { note.textContent = '⚠️ Every day up to that date is a rest day. Pick a later date or free up a reading day.'; return; }
@@ -5900,7 +5944,7 @@ body{padding-left:62px}
         const done = books.filter(b => b.read && b.status !== 'abandoned' && (y === 'all' || inYear(b.finishedAt))), rated = done.filter(b => b.rating > 0), dur = b => b.actualMinutes || b.duration;
         const hours = done.reduce((t, b) => t + dur(b), 0), pages = done.reduce((t, b) => t + (b.totalPages || 0), 0), avg = rated.length ? rated.reduce((t, b) => t + b.rating, 0) / rated.length : 0;
         const logged = Object.entries(dailyLog).filter(([k]) => inYear(k)).reduce((t, [, v]) => t + v, 0), daysRead = [...readDaySet()].filter(inYear).length, st = calcStreaks();
-        const yb = (() => { const days = [...new Set([...checkIns, ...Object.entries(dailyLog).filter(([, v]) => v > 0).map(([k]) => k)])].filter(inYear).sort(); let best = 0, run = 0, prev = null; days.forEach(k => { const [a, b2, c] = k.split('-').map(Number); run = prev && dateKey(shiftDay(prev, 1)) === k ? run + 1 : 1; best = Math.max(best, run); prev = new Date(a, b2 - 1, c); }); return best; })();
+        const yb = (() => { const days = [...new Set([...checkIns, ...Object.entries(dailyLog).filter(([, v]) => v > 0).map(([k]) => k)])].filter(inYear).sort(); let best = 0, run = 0, prev = null; days.forEach(k => { const [a, b2, c] = k.split('-').map(Number); run = prev && (dateKey(shiftDay(prev, 1)) === k || (typeof vacBridge === 'function' && vacBridge(dateKey(prev), k))) ? run + 1 : 1; best = Math.max(best, run); prev = new Date(a, b2 - 1, c); }); return best; })();
         const allSess = books.flatMap(b => (b.sessions || []).filter(x => inYear(x.date))), sPages = allSess.reduce((t, x) => t + (x.pages || 0), 0);
         const spd = allSess.filter(x => x.mins > 0 && x.pages > 0), spdM = spd.reduce((t, x) => t + x.mins, 0), spdP = spd.reduce((t, x) => t + x.pages, 0);
         const dated = done.map(b => ({ b, d: daysTook(b) })).filter(x => x.d), avgDays = dated.length ? Math.round(dated.reduce((t, x) => t + x.d, 0) / dated.length * 10) / 10 : null;
@@ -10125,8 +10169,8 @@ function qR(){const q=st(),d=day(q),lv=Math.min(5,Math.floor(q.tot/12)),pr=lv<5?
 function tick(){const q=st(),d=day(q);picks().forEach(k=>{if(!d.done.includes(k)&&POOL[k][3](d)){d.done.push(k);q.stars+=2;q.tot+=2;toast(`✨ Quest complete: ${POOL[k][1]} · +2⭐`)}});
  const wk=qWkKey().k,w=qWkStat();if(!q.wk||q.wk.k!==wk)q.wk={k:wk,done:[]};
  qWK.forEach((p,i)=>{if(!q.wk.done.includes(i)&&p[2](w).ok){q.wk.done.push(i);q.stars+=5;q.tot+=5;toast(`🏆 Weekly challenge complete: ${p[1]} · +5⭐`)}});
- const y=dateKey(shiftDay(new Date(),-1)),y2=dateKey(shiftDay(new Date(),-2));
- if(!checkIns.has(y)&&checkIns.has(y2)&&q.fr>0){q.fr--;checkIns.add(y);saveCheckIns();renderStreak();toast('🧊 A freeze melted to save yesterday. Your streak lives on!')}
+ const y=dateKey(shiftDay(new Date(),-1));let y2d=shiftDay(new Date(),-2);for(let k=0;k<400&&typeof isVac==='function'&&isVac(y2d);k++)y2d=shiftDay(y2d,-1);const y2=dateKey(y2d),yVac=typeof isVac==='function'&&isVac(y);
+ if(!yVac&&!checkIns.has(y)&&checkIns.has(y2)&&q.fr>0){q.fr--;checkIns.add(y);saveCheckIns();renderStreak();toast('🧊 A freeze melted to save yesterday. Your streak lives on!')}
  S('qs',q);qR();chkDone()}
 $('qb-f').onclick=()=>{const q=st();if(q.fr>=3)return toast('🧊 You can hold 3 freezes at most');if(q.stars<8)return toast('⭐ Need 8 stars. Finish more quests!');q.stars-=8;q.fr++;S('qs',q);qR();toast('🧊 Freeze added!')};
 $('qb-t').onclick=e=>{const b=e.target.closest('button');if(!b)return;S('qtab',b.dataset.t);qR()};
@@ -11183,13 +11227,13 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
     [null, null, `Explicit content 🔞`, 'Welcome', `<p>Some tags, warnings and kinks are for <b>grown-ups only</b> (explicit and 18+). You can keep them out of sight so your garden stays cozy and safe.</p><p>Nothing is deleted: safe mode only hides them, and you can switch it any time in <b>⚙️ settings</b>.</p>`, 'safe'],
     [['#levi-buddy'], null, `Meet chibi Levi 🧍`, 'Welcome', `<p>A tiny chibi Levi can keep you company in the bottom-right corner while you read and plan. He is purely decorative: he never blocks clicks and he does not get in the way of anything.</p>`, 'levi'],
     [['#col-left'], 'backlog', `Your home panel 🌿`, 'Essentials', `<p>The left column is your <b>dashboard</b> and updates live as you read:</p><ul><li>🌷 <b>Progress Garden</b> – one flower per finished book, and the <b>goal ring</b> for today's minutes</li><li>📌 <b>Next up</b>, 🔥 <b>Reading streak</b>, 🎀 <b>Quest Board</b> (stars grow Pip), 🎡 <b>TBR Roulette</b>, 🔮 <b>Whisper me some recs</b>, 🎃 <b>Seasonal events</b> and ✨ <b>Fairy Whisper</b></li><li>💾 <b>Back up</b>, <b>Restore</b> and <b>Reset</b> at the bottom</li></ul><p>The <b>❓ Quick tour</b> at the top of this panel walks through every card.</p>`],
-    [tabs, null, `Tabs and docks 🧭`, 'Essentials', `<ul><li>The tab bar along the top: 📜 <b>TBR</b> (books to read), 🗓️ <b>Weekly Path</b> (your schedule), ✨ <b>Finished</b> (reviews and ratings), 📚 <b>Library</b> (every unread book you own), 🔮 <b>Future Chapters</b>, 📖 <b>Reading Now</b>, 📊 <b>Year in Review</b>, 🌙 <b>Monthly Recap</b>, 🕰️ <b>Sessions</b>, 🪦 <b>Graveyard</b> and 💖 <b>Favorites</b>. Scroll it sideways if it does not all fit; the numbers count the books in each. It stays pinned at the top while you scroll.</li><li>The <b>docks</b> on the screen edges hold shortcuts (hover an icon for its name). <b>Right:</b> 🕰️ Sessions, 💖 Favorites, 🎵 Book Soundtrack, 🏆 All-Time Bracket, 📚 Bookshelf, ❝ Quotes. <b>Left:</b> 🔮 Future Chapters, 📊 Year in Review, 🌙 Monthly Recap, 📚 Series Tracker, 🪦 Graveyard, 🧹 Tidy duplicates.</li><li>↶ ↷ at the top right <b>undo and redo</b> your changes (Ctrl/⌘ + Z).</li></ul><p>Every tab and dock page has its own <b>❓ Quick tour</b>.</p>`],
+    [tabs, null, `Tabs and docks 🧭`, 'Essentials', `<ul><li>The tab bar along the top: 📜 <b>TBR</b> (books to read), 🗓️ <b>Weekly Path</b> (your schedule), ✨ <b>Finished</b> (reviews and ratings), 📚 <b>Library</b> (every unread book you own), 🔮 <b>Future Chapters</b>, 📖 <b>Reading Now</b>, 📊 <b>Year in Review</b>, 🌙 <b>Monthly Recap</b>, 🕰️ <b>Sessions</b>, 🪦 <b>Graveyard</b> and 💖 <b>Favorites</b>. Scroll it sideways if it does not all fit; the numbers count the books in each. It stays pinned at the top while you scroll.</li><li>The <b>docks</b> on the screen edges hold shortcuts (hover an icon for its name). <b>Right:</b> 🕰️ Sessions, 💖 Favorites, 🎵 Book Soundtrack, 🏆 All-Time Bracket, 📚 Bookshelf, ❝ Quotes, 🗓️ Coming Soon (release countdowns). <b>Left:</b> 🔮 Future Chapters, 📊 Year in Review, 🌙 Monthly Recap, 📚 Series Tracker, 🪦 Graveyard, 🧹 Tidy duplicates.</li><li>↶ ↷ at the top right <b>undo and redo</b> your changes (Ctrl/⌘ + Z).</li></ul><p>Every tab and dock page has its own <b>❓ Quick tour</b>.</p>`],
     [[up('#new-title', 1)], 'backlog', `Add a book: Plant 🌱`, 'Essentials', `<p>Type a title, enter how long it takes to read, then press <b>🌱 Plant</b>. The time powers your schedule, so a rough guess is fine.</p><ul><li><b>Tap a cover</b> in Covers view to open the book's edit panel</li><li>The whole TBR page scrolls, so the header slides away and your books get the room</li><li>🔮 <b>Scroll Sorcery</b> (Bulk add, Shuffle, From graveyard), 🪄 <b>Quick Enchant</b>, 🎀 <b>Filters</b>, search, the month pages and the List / Grid / Covers views are all in the TBR's <b>❓ Quick tour</b></li></ul>`],
     [[box('#review-modal')], null, `Edit and review a book ✎`, 'Essentials', `<p>Open any book with <b>✎ / Edit details</b>, or by tapping its cover in the TBR's Covers view.</p><ul><li>🌸 <b>Basics</b>: cover, title, authors, pages, fandoms, pairings, link and dates</li>{{AO3}}<li>🏷️ <b>Tags &amp; series</b>: tags, warnings and vibes</li><li>✍️ <b>Rate &amp; review</b>: <b>fairy ratings</b> (tap a dot, 1 to 5, per category), thoughts, feelings and mood, highlights</li><li>🎵 <b>Extras</b>: scenes, theories, best / weakest, quotes, songs and the 🌳 family tree</li></ul><p>The <b>❓ Quick tour</b> in this window's header explains every tab.</p>`, null, hookReview(false, false)],
-    [[up('#start-date', 3)], 'schedule', `Plan your reading 🗓️`, 'Essentials', `<p>Tell the app <b>when you start</b> and either a <b>target date</b> or your <b>daily minutes</b>, then press <b>Weave</b>. It builds a day-by-day trail from your backlog, with optional rest days and different minutes for each weekday.</p>`],
+    [[up('#start-date', 3)], 'schedule', `Plan your reading 🗓️`, 'Essentials', `<p>Tell the app <b>when you start</b> and either a <b>target date</b> or your <b>daily minutes</b>, then press <b>Weave</b>. It builds a day-by-day trail from your backlog, with optional rest days and different minutes for each weekday.</p><p>📌 <b>Lock a book to a week</b> for a book club or event, and add 🏖️ <b>vacation days</b> that the plan skips without breaking your streak.</p>`],
     [['.lb-hero', '#tab-btn-lib'], 'lib', `Your Library 📚`, 'Essentials', `<p><b>📚 Library</b> holds every unread book you own. Only the ones you put <b>in your plan</b> show up in the TBR and the Weekly Path; the rest wait here until you are ready.</p><p>Search, filter, and <b>☑ Select multiple</b> → <b>🌷 Program selected</b> to drop many books into your plan at once (next up, at the end, or spread evenly).</p>`],
     [['#tab-btn-future', '.dock-btn[data-tab="future"]'], null, `Future Chapters 🔮`, 'Essentials', `<p>The <b>🔮 Future Chapters</b> tab (also at the top of the left dock) shows every book in your plan laid out <b>year by year and month by month</b>, with its cover and the day you will finish it. Perfect for plans that run over several years.</p>`],
-    [['#now-content', '#tab-content-now'], 'now', `Read and log 📖`, 'Essentials', `<p>Every book you are reading gets a card: <b>log minutes and pages</b>, add a 🔖 bookmark, 📝 page notes, first impressions and theories. Logging feeds your goal ring, streak and stats.</p><p>When you finish, the review window opens so you can give it <b>fairy ratings</b> straight away; the book moves to <b>✨ Finished</b>, and <b>📊 Year in Review</b> turns it all into stats. Want a focus sprint? The 🌷 <b>Story Spell</b> timer lives in 🕰️ Sessions.</p>`],
+    [['#now-content', '#tab-content-now'], 'now', `Read and log 📖`, 'Essentials', `<p>Every book you are reading gets a card: <b>log minutes and pages</b>, add a 🔖 bookmark, 📝 page notes, first impressions and theories. Logging feeds your goal ring, streak and stats.</p><p>When you finish, the review window opens so you can give it <b>fairy ratings</b> straight away; the book moves to <b>✨ Finished</b>, and <b>📊 Year in Review</b> turns it all into stats. Want a focus sprint? The 🌷 <b>Story Spell</b> timer lives in 🕰️ Sessions.</p><p>Started a book you planned for later? <b>🌙 Save for later</b> keeps its progress and place in your plan but takes it off Reading Now, and ⚙️ Settings has a gentle <b>reading limit</b>.</p>`],
     [['#st-hero', '#tab-content-settings'], 'settings', `Settings ⚙️`, 'Essentials', `<p>The <b>⚙️</b> (top-right) opens Settings: one cozy page of cards for theme, text size, safe mode, 🔒 <b>PIN lock</b>, 🎃 seasonal events, AO3 import, chibi Levi, the <b>🏷️ tag manager</b>, rating categories, cover storage, CSV imports and <b>backups</b>. The pills under the pink header jump straight to a card, and the chips show your theme and when you last backed up. Download a backup now and then, because your library only lives in this browser.</p><p>Under <b>🧭 Help &amp; tours</b> you can <b>hide the ❓ Quick tour buttons</b> once you know the app, or replay this tour.</p>`],
     [['#ui-gear'], 'backlog', `You're all set! 🎉`, 'Done', `<p>Start by planting your first book in the TBR. Look for the small <b>❓ Quick tour</b> at the top of any tab whenever you want the details, and hide those buttons (or replay this full tour) in ⚙️ Settings. Happy reading! 🌿</p>`]
   ];
@@ -11234,6 +11278,7 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
     'schedule': [
     [[up('#start-date', 3)], 'schedule', `The Oracle's Master Settings`, 'Weekly Path', `<p>Tell the app <b>when you start</b>, and either a <b>target date</b> (it works out your daily minutes) or your <b>daily minutes</b> (it works out your finish date and fills it into Target Date for you). Dates use a little pop-up calendar. Press <b>Weave</b> to build the plan from your backlog.</p>`],
     [['#ts-box'], null, `Reading Rhythm 🕰`, 'Weekly Path', `<p>Your weekday minutes, reading days and the "all finished by…" note live in this fold-out <b>Reading Rhythm</b> card. Tap it to open or close it; when it is closed the line under the title still tells you your reading days and finish date.</p>`],
+    [['#wl-card'], 'schedule', `Locked weeks & vacations 📌🏖️`, 'Weekly Path', `<ul><li><b>📌 Lock a book to a week</b>: pick a planned book and the first day of the week. It is read inside those 7 days, spread over your reading days, before anything else, and the rest of the plan flows around it. A ⚠ appears if that week does not have enough reading time. Locked books show a 📌 on the trail</li><li><b>🏖️ Vacation days</b>: add the first and last day away (and a trip name). Your plan skips them like rest days, the trail shows 🏖️, and <b>your streak is safe</b> without spending a freeze</li><li>✕ removes a lock or a trip</li></ul>`],
     [[function () { if (window.tsOpen) tsOpen(true); return document.querySelector('#wk-panel'); }], null, `Different minutes per weekday`, 'Weekly Path', `<p>Busy Tuesdays? Turn on <b>different minutes for each weekday</b>. Leave a day blank to use your usual minutes, or type <b>0</b> for a day off.</p>`],
     [[function () { if (window.tsOpen) tsOpen(true); return document.querySelector('#rest-days'); }], null, `Rest days`, 'Weekly Path', `<p>Pick the days you do not want to read. They show up as camp-out rest days on your trail and are skipped when the finish date is calculated.</p>`],
     [['#schedule-output'], null, `Your reading trail 🗺️`, 'Weekly Path', `<p>A winding trail of days. Each day lists which books to read and for how many minutes, with a 🏁 on the day a book gets finished. You also see your <b>finish line date</b>, reading days vs. rest days, time still to read, and a ribbon of days that turns ✓ when you hit the goal. Page through weeks with <b>Prev / Next</b>.</p>`],
@@ -11245,6 +11290,11 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
     ],
     'now': [
     [['#now-content', '#tab-content-now'], 'now', `Reading Now 📖`, 'Reading Now', `<p>One full card for <b>every book you are reading</b>.</p><ul><li>Progress, time and pages (✎ to fix them), speed and a <b>finish estimate</b></li><li><b>Log</b> minutes and pages</li><li><b>🔖 Bookmark</b> and <b>📝 Page notes</b></li><li><b>🌱 First impressions</b> and <b>🔮 Theories &amp; predictions</b></li><li><b>🕰️ Timeline</b> for that book</li></ul><p>Reading a second book too? Log pages on it in the TBR and it gets its own card. Sessions feed your goal ring, streak, heatmap and each book's progress.</p>`],
+    [['.nl-later', '#nl-shelf', '#now-content'], 'now', `🌙 Save for later`, 'Reading Now', `<p>Started a book that your plan puts later in the year? Press <b>🌙 Save for later</b> on its card. It keeps its progress and its place in your plan, it is not DNF'd, and it leaves Reading Now. It waits in the <b>🌙 Saved for later</b> list at the bottom and comes back on its own once your plan reaches it, or press <b>↩ Read now</b>.</p><p>Set a <b>reading limit</b> in ⚙️ Settings → Reading Now, and you get a gentle nudge when you open more books than that. The status menu on a TBR card also has 🌙 Saved for later.</p>`],
+    ],
+    'soon': [
+    [['#cs-hero', '#tab-content-soon'], 'soon', `Coming Soon 🗓️`, 'Planning', `<p>Books you are waiting for, each with a <b>countdown</b> to release day. The chips count what is on the way, the next release and what is already out. On release day you get a little 🎉 hello.</p>`],
+    [['#cs-form'], 'soon', `Add a release`, 'Planning', `<p>Type the title, author and release date (plus an optional note such as the series, and a link), then <b>🗓️ Add release</b>. ✎ edits a card and 🗑 removes it.</p><p><b>🌱 Add to TBR</b> plants it at the end of your plan, and <b>📚 Library</b> keeps it in your Library. Either way it starts with a 6h reading-time guess you can change.</p>`],
     ],
     'edit': [
     [['#rm-tabs'], null, `The review window: four tabs 🗂️`, 'Editing a book', `<p>Open any book with <b>✎</b> or <b>Edit details</b>. The window is split into four tabs along the top, so you only see one part at a time:</p><ul><li>🌸 <b>Basics</b> – the book, fandom &amp; pairing, link, reading journey</li><li>🏷️ <b>Tags &amp; series</b></li><li>✍️ <b>Rate &amp; review</b> – fairy ratings, thoughts, feelings, highlights</li><li>🎵 <b>Extras</b> – go deeper, best / weakest, quotes, songs, family tree</li></ul><p>A little <b>pink dot</b> on a tab means it already holds something for this book.</p>`, null, hookReview('basics')],
@@ -11317,11 +11367,12 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
 ],
     'settings': [
     [['#st-hero', '#tab-content-settings'], 'settings', `Settings ⚙️`, 'Settings', `<p>The <b>⚙️</b> in the top-right corner opens one page for everything you can tweak. Press it again, or the green <b>← Back</b>, to return to where you were.</p><p>The pink card on top shows little chips with your <b>theme</b>, <b>when you last backed up</b> (it turns pink after two weeks) and whether safe mode or a PIN is on. Every change saves right away.</p>`],
-    [['#st-jump'], 'settings', `Jump to a card 🎀`, 'Settings', `<p>Each settings card has a pill here: <b>Look, Content, Privacy, Events, Tours, Tags, Ratings, Covers, Fill in, Import</b> and <b>Backup</b>. Tap one to glide straight to its card (it gives a little glow so you can spot it). The whole page scrolls, so nothing is squashed into a small box.</p>`],
+    [['#st-jump'], 'settings', `Jump to a card 🎀`, 'Settings', `<p>Each settings card has a pill here: <b>Look, Content, Privacy, Events, Reading, Tours, Tags, Ratings, Covers, Fill in, Import</b> and <b>Backup</b>. Tap one to glide straight to its card (it gives a little glow so you can spot it). The whole page scrolls, so nothing is squashed into a small box.</p>`],
     [['#st-s-appearance'], 'settings', `Appearance 🎨`, 'Settings', `<ul><li><b>Theme</b>: tap the row to unfold the six colour themes and pick one</li><li><b>Card density</b>: 🛋️ Cozy shows everything, 📦 Compact hides tags and extra details</li><li><b>Text size</b>: the slider or the small and big <b>A</b> buttons; <b>Reset display</b> goes back to normal</li></ul>`],
     [['#st-s-content-and-extras'], 'settings', `Content & extras 🌸`, 'Settings', `<ul><li><b>Safe mode</b> hides every explicit 18+ tag, warning and label (nothing is deleted)</li><li><b>AO3 import &amp; search</b> shows the 🌸 Import from AO3 and 🔎 Find on AO3 buttons</li><li><b>Chibi Levi</b> keeps you company in the corner</li></ul><p>A little ♥ on a switch's knob means it is on.</p>`],
     [['#pin-sec'], 'settings', `Privacy: PIN lock 🔒`, 'Settings', `<ul><li><b>Set PIN</b> – choose 4 to 6 digits. The app then asks for it every time it opens, and after 5 minutes away</li><li><b>🔒 Lock now</b> – locks the screen straight away (handy before handing someone your device)</li><li><b>Change</b> or <b>Turn off</b> – both ask for the current PIN first</li></ul><p>It is a casual lock for this browser, not encryption, and it cannot be recovered: forgetting it means typing <b>RESET</b> on the lock screen (your books stay). Keep a backup.</p>`],
     [['#ev-sec'], 'settings', `Settings: seasonal events 🎃`, 'Settings', `<p>Switch <b>Show seasonal events</b> off to hide the event card from the home panel, and on again whenever you like. Your goals and ticked prompts are kept.</p>`],
+    [['#st-s-reading-now'], 'settings', `Reading Now 📖`, 'Settings', `<p><b>Reading limit</b> sets how many books you like to keep open (Off, or 1 to 6). Start one more and a gentle nudge offers to 🌙 save one for later. Saved-for-later books never count.</p>`],
     [['#st-s-help-and-tours'], 'settings', `Help & tours 🧭`, 'Settings', `<p><b>Mini-tour buttons ❓</b> switches the small Quick tour buttons on every tab on or off. <b>▶ Replay tour</b> runs the full walkthrough of the app again.</p>`],
     [['#st-s-tag-manager', '#st-s-rating-categories'], 'settings', `Tags and rating categories 🏷️`, 'Settings', `<ul><li><b>🏷️ Open tag manager →</b> renames, merges and recategorises every tag, warning and vibe (it has its own Quick tour)</li><li><b>Rating categories</b> lists what your 🧚 fairy ratings score; <b>✏️ Edit rating categories</b> renames, removes or adds them, and old ratings are kept safely</li></ul>`],
     [['#st-s-covers-and-storage'], 'settings', `Covers & storage 🖼️`, 'Settings', `<p>Choose the cover quality and see how much browser space your covers use. Big libraries with full-quality covers take more room.</p>`],
@@ -11390,7 +11441,7 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
   purgeDemo();   /* clears leftovers if the page was closed in the middle of a tour */
 
   var i = 0, hl, card, blk, open = false, run = MAIN, runKey = 'main', origTab = null, keepDemo = false;
-  var TABKEYS = ['backlog', 'schedule', 'reviews', 'lib', 'future', 'alltime', 'tagmgr', 'now', 'year', 'month', 'sessions', 'abandoned', 'favorites', 'quotes', 'soundtrack', 'shelf', 'series', 'settings'];
+  var TABKEYS = ['backlog', 'schedule', 'reviews', 'soon', 'lib', 'future', 'alltime', 'tagmgr', 'now', 'year', 'month', 'sessions', 'abandoned', 'favorites', 'quotes', 'soundtrack', 'shelf', 'series', 'settings'];
   function curTab() { for (var n = 0; n < TABKEYS.length; n++) { var c = $q('#tab-content-' + TABKEYS[n]); if (c && !c.classList.contains('hidden')) return TABKEYS[n]; } return null; }
   function cur() { return run.filter(function (s) { return s[5] !== 'ao' || ao(); }); }
   function done() { try { localStorage.setItem(KEY, '1'); } catch (e) {} }
@@ -11454,7 +11505,7 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
   function setMini(yes) { try { localStorage.setItem(MK, yes ? 'yes' : 'no'); } catch (e) {} document.body.classList.toggle('no-mini', !yes); }
   window.setMini = setMini;
   document.body.classList.toggle('no-mini', !miniOn());
-  var TABHOSTS = [['home', '#col-left', 'the home panel'], ['lib', '#tab-content-lib', 'the Library'], ['future', '#tab-content-future', 'Future Chapters'], ['alltime', '#tab-content-alltime', 'the All-Time Bracket'], ['book', '#tab-content-book', 'the book page'], ['tagmgr', '#tab-content-tagmgr', 'the Tag manager'], ['backlog', '#tab-content-backlog', 'the TBR'], ['schedule', '#tab-content-schedule', 'the Weekly Path'], ['reviews', '#tab-content-reviews', 'Finished books'], ['now', '#tab-content-now', 'Reading Now'], ['year', '#tab-content-year', 'Year in Review'], ['month', '#tab-content-month', 'Monthly Recap'], ['sessions', '#tab-content-sessions', 'Sessions'], ['abandoned', '#tab-content-abandoned', 'the Graveyard'], ['favorites', '#tab-content-favorites', 'Favorites'], ['quotes', '#tab-content-quotes', 'Quotes'], ['soundtrack', '#tab-content-soundtrack', 'the Book Soundtrack'], ['shelf', '#tab-content-shelf', 'the Bookshelf'], ['series', '#tab-content-series', 'the Series Tracker'], ['settings', '#tab-content-settings', 'Settings']];
+  var TABHOSTS = [['home', '#col-left', 'the home panel'], ['lib', '#tab-content-lib', 'the Library'], ['future', '#tab-content-future', 'Future Chapters'], ['alltime', '#tab-content-alltime', 'the All-Time Bracket'], ['book', '#tab-content-book', 'the book page'], ['tagmgr', '#tab-content-tagmgr', 'the Tag manager'], ['backlog', '#tab-content-backlog', 'the TBR'], ['schedule', '#tab-content-schedule', 'the Weekly Path'], ['reviews', '#tab-content-reviews', 'Finished books'], ['now', '#tab-content-now', 'Reading Now'], ['year', '#tab-content-year', 'Year in Review'], ['month', '#tab-content-month', 'Monthly Recap'], ['sessions', '#tab-content-sessions', 'Sessions'], ['abandoned', '#tab-content-abandoned', 'the Graveyard'], ['favorites', '#tab-content-favorites', 'Favorites'], ['quotes', '#tab-content-quotes', 'Quotes'], ['soundtrack', '#tab-content-soundtrack', 'the Book Soundtrack'], ['soon', '#tab-content-soon', 'Coming Soon'], ['shelf', '#tab-content-shelf', 'the Bookshelf'], ['series', '#tab-content-series', 'the Series Tracker'], ['settings', '#tab-content-settings', 'Settings']];
   var HEADHOSTS = [['edit', function () { var t = $q('#modal-book-title'); return t && t.parentElement; }, 'the edit window'], ['dups', function () { return $q('#dup-modal .dup-head'); }, 'Tidy duplicates']];
   function mkMini(k, label, inl) { var b = document.createElement('button'); b.type = 'button'; b.className = 'tourx-mini' + (inl ? ' inl' : ''); b.dataset.k = k; b.textContent = '❓ Quick tour'; b.title = 'Quick tour of ' + label; b.setAttribute('aria-label', 'Quick tour of ' + label); return b; }
   function placeMinis() {
@@ -12709,6 +12760,10 @@ div:has(>#tab-btn-backlog){flex-shrink:0}
       + row('Chibi Levi', 'Keeps you company in the bottom-right corner. Purely decorative.', sw('levi', lv, 'Chibi Levi'))
       + '</section>'
 
+      + '<section class="st-sec" aria-label="Reading Now"><h4 class="st-h"><i class="st-ic" aria-hidden="true">📖</i><span>Reading Now<small>How many books you keep open at once</small></span></h4>'
+      + row('Reading limit', 'A gentle nudge when you start more books than this. Books you 🌙 save for later never count.', seg('nowlim', window.nowLimit ? nowLimit() : 3, [['0', 'Off'], ['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5'], ['6', '6']]))
+      + '</section>'
+
       + '<section class="st-sec" aria-label="Help and tours"><h4 class="st-h"><i class="st-ic" aria-hidden="true">🧭</i><span>Help &amp; tours<small>Little guides whenever you need them</small></span></h4>'
       + row('Mini-tour buttons ❓', 'Shows a small ❓ Quick tour button at the top of every tab, so each screen can explain itself. Switch it off once you know your way around.', sw('mini', mn, 'Mini-tour buttons'))
       + row('Full app tour', 'Replay the short walkthrough of the essentials (about a dozen steps).', '<button type="button" class="st-btn alt" data-act="tour">▶ Replay tour</button>')
@@ -12752,7 +12807,7 @@ div:has(>#tab-btn-backlog){flex-shrink:0}
   // cute layer: icon bubbles for sections added by other scripts, a colour per card, hero chips and the jump bar
   var TONES = ['pink', 'sage', 'cream', 'lilac'];
   var SUBS = { 'Privacy': 'A little lock for your library', 'Seasonal events': 'Themed reading events through the year' };
-  var JUMPS = { 'Appearance': 'Look', 'Content and extras': 'Content', 'Privacy': 'Privacy', 'Seasonal events': 'Events', 'Help and tours': 'Tours', 'Tag manager': 'Tags', 'Rating categories': 'Ratings', 'Covers and storage': 'Covers', 'Fill in missing info': 'Fill in', 'Import new books': 'Import', 'Backup': 'Backup' };
+  var JUMPS = { 'Appearance': 'Look', 'Content and extras': 'Content', 'Reading Now': 'Reading', 'Privacy': 'Privacy', 'Seasonal events': 'Events', 'Help and tours': 'Tours', 'Tag manager': 'Tags', 'Rating categories': 'Ratings', 'Covers and storage': 'Covers', 'Fill in missing info': 'Fill in', 'Import new books': 'Import', 'Backup': 'Backup' };
   var decorating = false;
   function decorate() {
     var wrap = box.querySelector('.st-wrap'); if (!wrap || decorating) return;
@@ -12822,6 +12877,7 @@ div:has(>#tab-btn-backlog){flex-shrink:0}
     else if (a === 'tour') { if (window.startTour) startTour('main'); }
     else if (a === 'tagmgr') { try { switchTab('tagmgr'); } catch (x) {} }
     else if (a === 'dens') { UISET.setDens(v); pick('.ui-seg [data-act="dens"]'); }
+    else if (a === 'nowlim') { if (window.setNowLimit) setNowLimit(v); pick('.ui-seg [data-act="nowlim"]'); try { if (window.__nowRefresh) __nowRefresh(); } catch (x) {} }
     else if (a === 'fz') { UISET.setFz(UISET.get().fz + parseInt(v, 10)); var r = $('st-fz'), o = $('st-fv'); if (r) r.value = UISET.get().fz; if (o) o.textContent = UISET.get().fz + '%'; }
     else if (a === 'dreset') { UISET.reset(); render(); }
     else if (a === 'cats') { var c = $('cm-b'); if (c) { c.click(); watchModal(); } }
@@ -14230,7 +14286,7 @@ s.G{background:#f2b84b}s.A{background:#fff;outline:2px dashed rgb(var(--c-e8a0b4
 <div class="lb-bar"><button type="button" id="lb-ftoggle" class="lb-pill" aria-expanded="true">🎀 Filters &amp; sort <span id="lb-farrow">▾</span></button><span id="lb-fcount" style="font:800 10px Montserrat,sans-serif;color:rgb(var(--c-a8506a))"></span><button type="button" id="lb-clear" class="lb-pill" hidden>✕ Clear filters</button>
 <div class="vw-row" style="margin:0 0 0 auto"><span>View</span><div class="vw-seg" data-k="lib"><button type="button" data-v="list">☰ List</button><button type="button" data-v="grid">▦ Grid</button><button type="button" data-v="covers">📚 Covers</button></div></div></div>
 <div id="lb-filters"><div class="lb-bar lb-ctl"><select id="lb-sort" class="lb-sel lb-sortsel" style="flex:1 1 150px" title="Sort by"><option value="manual">My order</option><option value="title">Title</option><option value="author">Author</option><option value="time">Reading time</option><option value="pages">Pages</option><option value="rating">Rating</option><option value="added">Date added</option><option value="year">Year published</option></select><button type="button" id="lb-dir" class="lb-pill" title="Switch between ascending and descending"></button></div><div class="lb-bar"><select id="lb-fandom" data-fk="fandom" class="lb-sel"></select><select id="lb-pairing" data-fk="pairing" class="lb-sel"></select></div>
-<div class="lb-bar"><select id="lb-status" data-fk="status" class="lb-sel"><option value="">All statuses</option><option value="none">📖 Regular</option><option value="onhold">⏸️ On hold</option><option value="rereading">🔁 Rereading</option></select><select id="lb-tags" data-fk="tags" class="lb-sel"></select><select id="lb-warnings" data-fk="warnings" class="lb-sel"></select><select id="lb-vibes" data-fk="vibes" class="lb-sel"></select><select id="lb-chars" data-fk="chars" class="lb-sel"></select></div></div>
+<div class="lb-bar"><select id="lb-status" data-fk="status" class="lb-sel"><option value="">All statuses</option><option value="none">📖 Regular</option><option value="onhold">⏸️ On hold</option><option value="rereading">🔁 Rereading</option><option value="later">🌙 Saved for later</option></select><select id="lb-tags" data-fk="tags" class="lb-sel"></select><select id="lb-warnings" data-fk="warnings" class="lb-sel"></select><select id="lb-vibes" data-fk="vibes" class="lb-sel"></select><select id="lb-chars" data-fk="chars" class="lb-sel"></select></div></div>
 <div class="lb-bar" id="lb-bulk"></div><div class="lb-pager" id="lb-pg-top"></div><div id="lib-content" data-view="list" class="flex-none"></div><div class="lb-pager" id="lb-pg-bot"></div></div>`);
     { const ty = $('tbr-yr'); if (ty) ty.textContent = yr(); }
 
@@ -15234,11 +15290,12 @@ button.pp-bk{cursor:pointer;font:inherit}
         let mins = 0; try { mins = un.reduce((t, b) => t + (remainingMinutes(b) || 0), 0); } catch (e) {}
         // same rule as the Reading Now tab: the current pick plus planned books already started
         let now = 0; try { const cur = books.find(inNow); now = books.filter(b => b === cur || (inNow(b) && (b.minutesRead > 0 || (b.pagesRead || 0) > 0 || b.status === 'rereading'))).length; } catch (e) {}
-        const hold = un.filter(b => b.status === 'onhold').length;
+        const hold = un.filter(b => b.status === 'onhold').length, later = un.filter(b => b.status === 'later').length;
         const h = [];
         if (mins) h.push(`<span class="tbr-chip">⏳ about ${formatTime(mins)} to read</span>`);
         if (now) h.push(`<span class="tbr-chip g">📖 ${now} reading now</span>`);
         if (hold) h.push(`<span class="tbr-chip y">⏸️ ${hold} on hold</span>`);
+        if (later) h.push(`<span class="tbr-chip" title="Started, keeping their place in your plan">🌙 ${later} saved for later</span>`);
         box.innerHTML = h.join(''); box.hidden = !h.length;
     }
     chips();
@@ -16353,7 +16410,7 @@ p.wpx-title{display:flex!important;align-items:center;gap:12px;margin:0 0 12px!i
     const dd = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const started = b => b.minutesRead > 0 || b.pagesRead > 0 || b.status === 'rereading';
     const tile = o => {
-        const b = o.b, tag = b.status === 'onhold' ? '⏸️' : started(b) ? '📖' : b.favorite ? '💖' : '';
+        const b = o.b, tag = b.status === 'onhold' ? '⏸️' : b.status === 'later' ? '🌙' : started(b) ? '📖' : b.favorite ? '💖' : '';
         return `<button type="button" class="fcx-b" data-i="${o.i}" title="${E(b.title)}${o.d ? ' · finishes ' + E(dd(o.d)) : ''}"><span class="fcx-cv" style="${cov(b)}">${b.cover ? '' : `<span>${E(b.title.length > 40 ? b.title.slice(0, 39) + '…' : b.title)}</span>`}${tag ? `<i class="fcx-tag">${tag}</i>` : ''}</span><span class="fcx-t">${E(b.title)}</span>${o.d ? `<span class="fcx-d">🏁 ${E(dd(o.d))}</span>` : ''}</button>`;
     };
     function render() {
@@ -16407,6 +16464,278 @@ p.wpx-title{display:flex!important;align-items:center;gap:12px;margin:0 0 12px!i
     const el = document.getElementById('spx-tod'); if (!el) return;
     const paint = () => { const h = new Date().getHours(); el.textContent = h < 5 ? '🌙 up late · your magical guide' : h < 12 ? '☀️ good morning · your magical guide' : h < 18 ? '🌷 good afternoon · your magical guide' : '🌙 good evening · your magical guide'; };
     paint(); setInterval(paint, 10 * 60 * 1000);
+})();
+</script>
+<style id="b1-css">
+/* ===== Batch 1: Saved for later, reading limit, week locks, vacation days, Coming Soon ===== */
+.nl-later{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:99px;border:1.5px solid rgb(var(--c-e0b8c0));background:rgb(var(--c-f6f0fb));color:rgb(var(--c-8f4d62));font:800 10.5px Montserrat,sans-serif;cursor:pointer;margin-top:8px}
+.nl-later:hover{background:#fff}
+.nl-shelf{margin-top:14px;padding:14px 16px;border-radius:22px;border:2px dashed rgb(var(--c-e0b8c0));background:linear-gradient(135deg,rgb(var(--c-f6f0fb)),#fff)}
+.nl-shelf h4{margin:0 0 2px;font:800 15px 'Playfair Display',serif;color:rgb(var(--c-8f4d62))}
+.nl-shelf>p{margin:0 0 10px;font:italic 600 11.5px 'Playfair Display',serif;color:rgb(var(--c-6b705c))}
+.nl-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1.5px dashed rgb(var(--c-e0b8c0)/.7)}
+.nl-row:first-of-type{border-top:0}
+.nl-cv{flex:none;width:30px;height:44px;border-radius:3px 6px 6px 3px;background-size:cover;background-position:center;box-shadow:0 3px 8px rgb(var(--c-3e4a3d)/.2)}
+.nl-tx{flex:1;min-width:0}.nl-tx b{display:block;font:800 12.5px Montserrat,sans-serif;color:rgb(var(--c-3e4a3d));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nl-tx small{display:block;font-size:10.5px;color:rgb(var(--c-6b705c))}
+.nl-bar{height:5px;border-radius:99px;background:rgb(var(--c-f0dcdc));margin-top:4px;overflow:hidden}.nl-bar i{display:block;height:100%;background:linear-gradient(90deg,rgb(var(--c-e8a0b4)),rgb(var(--c-a3b18a)))}
+.nl-back{flex:none;padding:5px 11px;border-radius:99px;border:1.5px solid rgb(var(--c-cfdbb0));background:#fff;color:rgb(var(--c-4f5d2c));font:800 10px Montserrat,sans-serif;cursor:pointer}
+.nl-over{margin:0 0 10px;padding:8px 12px;border-radius:14px;background:rgb(var(--c-fff1f3));border:1.5px solid rgb(var(--c-f4c9d2));font:700 11px Montserrat,sans-serif;color:rgb(var(--c-a8506a))}
+#wl-card{margin:10px 0 12px;padding:14px 16px;border-radius:22px;border:2px solid rgb(var(--c-f4c9d2));background:linear-gradient(180deg,rgb(var(--c-fdeef2)),#fff 80px);box-shadow:0 10px 22px -18px rgb(var(--c-a8506a)/.5)}
+#wl-card h4{margin:0;font:800 15px 'Playfair Display',serif;color:rgb(var(--c-a8506a))}
+#wl-card .wl-sub{margin:1px 0 10px;font:italic 600 11px 'Playfair Display',serif;color:rgb(var(--c-6b705c))}
+.wl-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.wl-col{padding:10px 12px;border-radius:16px;background:#fff;border:1.5px dashed rgb(var(--c-f0d0d8))}
+.wl-col.v{border-color:rgb(var(--c-cfdbb0))}
+.wl-col b.wl-h{display:block;font:800 12.5px Montserrat,sans-serif;color:rgb(var(--c-3e4a3d));margin-bottom:2px}
+.wl-col small.wl-hint{display:block;font-size:10.5px;color:rgb(var(--c-6b705c));margin-bottom:8px;line-height:1.4}
+.wl-form{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.wl-form input,.wl-form select{min-width:0;flex:1 1 120px;padding:6px 10px;border-radius:12px;border:1.5px solid rgb(var(--c-e8c4c4));background:#fff;font:600 11px Montserrat,sans-serif;color:rgb(var(--c-3e4a3d));outline:0}
+.wl-form input:focus,.wl-form select:focus{border-color:rgb(var(--c-8a9a5b))}
+#wl-card .wl-form .cz-btn{flex:1 1 140px;min-width:0;max-width:100%;display:inline-flex;align-items:center;justify-content:space-between;gap:6px;padding:6px 10px!important;border-radius:12px!important;border:1.5px solid rgb(var(--c-e8c4c4))!important;background:#fff!important;font:600 11px/1.3 Montserrat,sans-serif!important;color:rgb(var(--c-3e4a3d))!important}
+#wl-card .wl-form .cz-btn .cz-lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wl-btn{flex:none;padding:6px 13px;border-radius:99px;border:0;background:linear-gradient(90deg,rgb(var(--c-b5c78a)),rgb(var(--c-8a9a5b)));color:#fff;font:800 10.5px Montserrat,sans-serif;cursor:pointer}
+.wl-list{margin-top:8px;display:flex;flex-direction:column;gap:5px}
+.wl-it{display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:12px;background:rgb(var(--c-fdeef2));font-size:11px;color:rgb(var(--c-3e4a3d))}
+.wl-col.v .wl-it{background:rgb(var(--c-f3f6e8))}
+.wl-it span{flex:1;min-width:0}.wl-it em{font-style:normal;display:block;font-size:10px;color:rgb(var(--c-6b705c))}.wl-it em.warn{color:rgb(var(--c-a8506a));font-weight:700}
+.wl-x{flex:none;width:22px;height:22px;border-radius:50%;border:1.5px solid rgb(var(--c-e8c4c4));background:#fff;color:rgb(var(--c-a8506a));font:800 10px sans-serif;cursor:pointer}
+.wl-empty{margin:0;font:italic 600 11px 'Playfair Display',serif;color:rgb(var(--c-6b705c))}
+.cs-hero{position:relative;overflow:hidden;display:flex;align-items:center;gap:14px;padding:16px 18px;margin:2px 0 12px;border-radius:24px;background:linear-gradient(135deg,rgb(var(--c-f6f0fb)),rgb(var(--c-fdeef2)) 55%,rgb(var(--c-dfe9c6)));border:2px solid rgb(var(--c-e0b8c0));box-shadow:0 10px 24px -16px rgb(var(--c-a8506a)/.5),0 0 0 5px rgb(var(--c-e0b8c0)/.2)}
+.cs-badge{flex:none;width:52px;height:52px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:25px;box-shadow:0 0 0 2px rgb(var(--c-e0b8c0)),0 5px 12px -4px rgb(var(--c-a8506a)/.45)}
+.cs-badge span{display:inline-block;animation:csbob 2.8s ease-in-out infinite}@keyframes csbob{0%,100%{transform:translateY(0) rotate(-5deg)}50%{transform:translateY(-3px) rotate(5deg)}}
+.cs-ht{flex:1;min-width:0}.cs-ht b{display:block;font:800 21px/1.1 'Playfair Display',serif;color:rgb(var(--c-a8506a))}.cs-ht small{display:block;margin-top:3px;font:italic 600 11.5px/1.4 'Playfair Display',serif;color:rgb(var(--c-6b705c))}
+.cs-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.cs-chip{padding:3px 11px;border-radius:99px;background:#fff;border:1.5px solid rgb(var(--c-f0d0d8));font:800 10px Montserrat,sans-serif;color:rgb(var(--c-a8506a))}
+.cs-form{display:grid;grid-template-columns:2fr 1.4fr 1fr;gap:7px;padding:12px;border-radius:18px;background:#fff;border:1.5px dashed rgb(var(--c-f0d0d8));margin-bottom:14px}
+.cs-form input{min-width:0;padding:7px 11px;border-radius:12px;border:1.5px solid rgb(var(--c-e8c4c4));font:600 11.5px Montserrat,sans-serif;color:rgb(var(--c-3e4a3d));outline:0;background:#fff}
+.cs-form input:focus{border-color:rgb(var(--c-8a9a5b))}
+.cs-form .cs-wide{grid-column:1/-1;display:flex;gap:7px;flex-wrap:wrap}.cs-form .cs-wide input{flex:1 1 160px}
+.cs-go{padding:7px 16px;border-radius:99px;border:0;background:linear-gradient(90deg,rgb(var(--c-e8a0b4)),rgb(var(--c-a8506a)));color:#fff;font:800 11px Montserrat,sans-serif;cursor:pointer}
+.cs-cancel{padding:7px 14px;border-radius:99px;border:1.5px solid rgb(var(--c-e8c4c4));background:#fff;color:rgb(var(--c-3e4a3d));font:800 11px Montserrat,sans-serif;cursor:pointer}
+@media(max-width:560px){.cs-form{grid-template-columns:1fr}}
+.cs-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.cs-card{position:relative;display:flex;gap:11px;padding:12px;border-radius:20px;background:#fff;border:2px solid rgb(var(--c-f4c9d2));box-shadow:0 8px 18px -14px rgb(var(--c-a8506a)/.55)}
+.cs-card.out{border-color:rgb(var(--c-cfdbb0));background:linear-gradient(135deg,#fff,rgb(var(--c-f3f6e8)))}
+.cs-card.today{border-color:rgb(var(--c-e8a0b4));box-shadow:0 0 0 4px rgb(var(--c-f4c9d2)/.5)}
+.cs-cv{flex:none;width:46px;height:68px;border-radius:4px 8px 8px 4px;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 4px 10px rgb(var(--c-3e4a3d)/.2),inset 3px 0 0 rgba(255,255,255,.35)}
+.cs-tx{flex:1;min-width:0}.cs-tx b{display:block;font:800 13px/1.25 'Playfair Display',serif;color:rgb(var(--c-3e4a3d));overflow-wrap:anywhere}
+.cs-tx small{display:block;font-size:10.5px;color:rgb(var(--c-6b705c));margin-top:1px}
+.cs-cd{display:inline-flex;align-items:baseline;gap:4px;margin-top:6px;padding:3px 10px;border-radius:99px;background:rgb(var(--c-fdeef2));font:800 10.5px Montserrat,sans-serif;color:rgb(var(--c-a8506a))}
+.cs-cd strong{font:800 16px 'Playfair Display',serif}
+.cs-card.out .cs-cd{background:rgb(var(--c-eef2e2));color:rgb(var(--c-4f5d2c))}
+.cs-acts{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.cs-a{padding:4px 10px;border-radius:99px;border:1.5px solid rgb(var(--c-e8c4c4));background:#fff;color:rgb(var(--c-3e4a3d));font:800 9.5px Montserrat,sans-serif;cursor:pointer}
+.cs-a.g{border-color:rgb(var(--c-cfdbb0));color:rgb(var(--c-4f5d2c))}
+.cs-a:hover{background:rgb(var(--c-fdeef2))}
+.cs-done{font:700 9.5px Montserrat,sans-serif;color:rgb(var(--c-4f5d2c))}
+.cs-empty{text-align:center;padding:24px 10px;font:italic 600 12.5px 'Playfair Display',serif;color:rgb(var(--c-6b705c))}
+.cs-sec{margin:4px 0 8px;font:800 10px Montserrat,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:rgb(var(--c-a8506a))}
+@media(prefers-reduced-motion:reduce){.cs-badge span{animation:none}}
+</style>
+<script type="text/plain" data-app id="b1-js">
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var E = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var LS = function (k, d) { try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } };
+  var SV = function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+  var say = function (body, act) { try { window.__toast({ mode: 'cz', body: body, action: act || null }); } catch (e) {} };
+  var fmtD = function (key, o) { var d = new Date(key + 'T00:00:00'); return isNaN(d) ? key : d.toLocaleDateString('en-US', o || { month: 'short', day: 'numeric' }); };
+  var refreshAll = function () { try { renderBooks(); } catch (e) {} try { if (currentTab === 'schedule') generateSchedule(); } catch (e) {} try { if (currentTab === 'now') renderNow(); } catch (e) {} };
+
+  /* ================= 1. Reading Now: limit + saved for later ================= */
+  var LIMK = 'enchantedNowLimit';
+  window.nowLimit = function () { return Math.max(0, parseInt(LS(LIMK, 3), 10) || 0); };
+  window.setNowLimit = function (n) { SV(LIMK, Math.max(0, parseInt(n, 10) || 0)); };
+  function openList() {   // same rule as the Reading Now tab
+    var cur = books.find(inNow);
+    return books.filter(function (b) { return b === cur || (inNow(b) && ((b.minutesRead || 0) > 0 || (b.pagesRead || 0) > 0 || b.status === 'rereading')); });
+  }
+  function parkedList() { return books.filter(function (b) { return b.status === 'later' && !b.read && isParked(b); }); }
+  function checkLimit(before) {
+    var lim = nowLimit(); if (!lim) return;
+    var after = openList(), fresh = after.filter(function (b) { return before.indexOf(b.id) < 0; });
+    if (fresh.length && after.length > lim)
+      say('📚 You now have ' + after.length + ' books open (your limit is ' + lim + '). Maybe save one for later? 🌙', { label: 'Choose one', onClick: function () { try { switchTab('now'); } catch (e) {} } });
+  }
+  window.__nowOpenList = openList;
+  ['applyMinutes', 'setStatus'].forEach(function (name) {
+    var orig = window[name]; if (typeof orig !== 'function') return;
+    window[name] = function () { var before = openList().map(function (b) { return b.id; }); var r = orig.apply(this, arguments); try { checkLimit(before); } catch (e) {} return r; };
+  });
+  window.saveForLater = function (i) {
+    var b = books[i]; if (!b || b.read) return;
+    var prev = b.status;
+    b.status = 'later'; b.gyPlan = undefined;
+    saveBooks(); refreshAll();
+    if (!isParked(b)) { say('🌙 “' + b.title + '” is next in your plan, so it stays on Reading Now. It will rest once another book comes first.'); return; }
+    say('🌙 “' + b.title + '” is saved for later. It keeps its progress and its place in your plan.', { label: 'Undo', onClick: function () { b.status = prev; saveBooks(); refreshAll(); } });
+  };
+  window.wakeLater = function (i) { var b = books[i]; if (!b) return; b.status = undefined; saveBooks(); refreshAll(); say('📖 “' + b.title + '” is back on Reading Now.'); };
+  var _rn = window.renderNow;
+  if (typeof _rn === 'function') window.renderNow = function () {
+    var r = _rn.apply(this, arguments);
+    try {
+      var box = $('now-content'); if (!box) return r;
+      box.querySelectorAll(':scope > div').forEach(function (c) {
+        if (c.querySelector('.nl-later')) return;
+        var lb = c.querySelector('button[onclick^="logCurrent("]'); if (!lb) return;
+        var i = bookIxFrom(lb.getAttribute('onclick')), b = books[i]; if (!b || isNaN(i)) return;
+        c.insertAdjacentHTML('beforeend', '<button type="button" class="nl-later" onclick="saveForLater(' + i + ')" title="Keep its progress and its place in your plan, but take it off Reading Now">🌙 Save for later</button>');
+      });
+      var lim = nowLimit(), open = openList().length;
+      if (lim && open > lim && !box.querySelector('.nl-over')) box.insertAdjacentHTML('afterbegin', '<div class="nl-over">📚 ' + open + ' books open, your limit is ' + lim + '. Tap 🌙 Save for later on one you are not reading right now.</div>');
+      var pk = parkedList();
+      if (pk.length && !$('nl-shelf')) {
+        var fin = null; try { fin = planFinishInfo(); } catch (e) {}
+        box.insertAdjacentHTML('beforeend', '<section class="nl-shelf" id="nl-shelf"><h4>🌙 Saved for later</h4><p>Started, but resting until your plan reaches them. They keep their progress and their place.</p>'
+          + pk.map(function (b) {
+            var i = books.indexOf(b), pc = Math.round(progPct(b)), fd = fin && fin.get(i);
+            return '<div class="nl-row"><i class="nl-cv" style="' + coverStyle(b) + '"></i><div class="nl-tx"><b>' + E(b.title) + '</b><small>' + pc + '% read' + (fd ? ' · plan finishes it ' + E(fd.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })) : '') + '</small><div class="nl-bar"><i style="width:' + pc + '%"></i></div></div><button type="button" class="nl-back" onclick="wakeLater(' + i + ')">↩ Read now</button></div>';
+          }).join('') + '</section>');
+      }
+    } catch (e) { console.error(e); }
+    return r;
+  };
+
+  /* ================= 2. Weekly Path: week locks + vacation days ================= */
+  function planned() { return books.map(function (b, i) { return { b: b, i: i }; }).filter(function (x) { return inPlan(x.b) && (x.b.manual || x.b.minutesRead < x.b.duration); }); }
+  function wlRender() {
+    var tsb = $('ts-box'); if (!tsb) return;
+    var card = $('wl-card');
+    if (!card) { card = document.createElement('div'); card.id = 'wl-card'; tsb.parentNode.insertBefore(card, tsb.nextSibling); card.addEventListener('click', wlClick); }
+    var keep = {}; card.querySelectorAll('input,select').forEach(function (el) { if (el.id && el.value) keep[el.id] = el.value; });
+    var fin = null; try { fin = planFinishInfo(); } catch (e) {}
+    var today0 = new Date(new Date().toDateString());
+    var locks = books.map(function (b, i) { return { b: b, i: i }; }).filter(function (x) { return x.b.lockWeek && !x.b.read; });
+    var opts = planned().filter(function (x) { return !x.b.lockWeek; }).map(function (x) { return '<option value="' + E(x.b.id) + '">' + E(x.b.title.length > 46 ? x.b.title.slice(0, 45) + '…' : x.b.title) + '</option>'; }).join('');
+    var lockRows = locks.map(function (x) {
+      var ls = x.b.lockWeek, le = new Date(ls + 'T00:00:00'); le.setDate(le.getDate() + 6);
+      var fd = fin && fin.get(x.i), late = fd && fd > le, past = le < today0;
+      var note = past ? 'that week is over, so it is back in its usual place' : !inPlan(x.b) ? 'not in your plan right now, so the lock waits' : late ? '⚠ not enough reading time that week, it finishes ' + fd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : fd ? 'finishes ' + fd.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) + ' 🏁' : '';
+      return '<div class="wl-it"><span>📌 <b>' + E(x.b.title) + '</b><em' + (late ? ' class="warn"' : '') + '>week of ' + E(fmtD(ls)) + ' – ' + E(le.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })) + (note ? ' · ' + E(note) : '') + '</em></span><button type="button" class="wl-x" data-unlock="' + x.i + '" aria-label="Unlock ' + E(x.b.title) + '">✕</button></div>';
+    }).join('');
+    var vacRows = vacList.slice().sort(function (a, b) { return a.from < b.from ? -1 : 1; }).map(function (v) {
+      var to = v.to && v.to >= v.from ? v.to : v.from, n = 0, d = new Date(v.from + 'T00:00:00');
+      for (var k = 0; k < 400 && vacKeyOf(d) <= to; k++) { n++; d.setDate(d.getDate() + 1); }
+      return '<div class="wl-it"><span>🏖️ <b>' + E(v.label || 'Vacation') + '</b><em>' + E(fmtD(v.from)) + (to !== v.from ? ' – ' + E(fmtD(to)) : '') + ' · ' + n + ' day' + (n === 1 ? '' : 's') + '</em></span><button type="button" class="wl-x" data-unvac="' + E(v.id) + '" aria-label="Remove this trip">✕</button></div>';
+    }).join('');
+    card.innerHTML = '<h4>📌 Locked weeks &amp; 🏖️ vacations</h4><p class="wl-sub">Pin a book to a week (book club, buddy read, event) and mark days away. The rest of your plan flows around them.</p>'
+      + '<div class="wl-grid"><div class="wl-col"><b class="wl-h">📌 Lock a book to a week</b><small class="wl-hint">It is read inside the 7 days starting on the date you pick, before anything else that week.</small>'
+      + '<div class="wl-form"><select id="wl-book" aria-label="Book to lock">' + (opts || '<option value="">No planned books yet</option>') + '</select><input type="date" id="wl-date" aria-label="Week starts on"><button type="button" class="wl-btn" data-act="lock">📌 Lock</button></div>'
+      + '<div class="wl-list">' + (lockRows || '<p class="wl-empty">No locked weeks yet.</p>') + '</div></div>'
+      + '<div class="wl-col v"><b class="wl-h">🏖️ Vacation days</b><small class="wl-hint">Skipped by your Weekly Path like rest days, and they never break your streak (no freeze needed).</small>'
+      + '<div class="wl-form"><input type="date" id="wl-from" aria-label="First day away"><input type="date" id="wl-to" aria-label="Last day away"><input id="wl-label" placeholder="Trip name (optional)" aria-label="Trip name"><button type="button" class="wl-btn" data-act="vac">＋ Add</button></div>'
+      + '<div class="wl-list">' + (vacRows || '<p class="wl-empty">No trips planned.</p>') + '</div></div></div>';
+    Object.keys(keep).forEach(function (id) { var el = $(id); if (el) el.value = keep[id]; });
+  }
+  window.wlRender = wlRender;
+  function afterPlanChange() { try { renderBooks(); } catch (e) {} try { generateSchedule(); } catch (e) {} try { renderStreak(); } catch (e) {} wlRender(); }
+  function wlClick(e) {
+    var t = e.target.closest('button'); if (!t) return;
+    if (t.dataset.unlock != null) { var b = books[+t.dataset.unlock]; if (b) { b.lockWeek = undefined; saveBooks(); afterPlanChange(); say('📌 “' + b.title + '” is unlocked and back in its usual place.'); } return; }
+    if (t.dataset.unvac != null) { vacList = vacList.filter(function (v) { return String(v.id) !== t.dataset.unvac; }); saveVac(); afterPlanChange(); return; }
+    if (t.dataset.act === 'lock') {
+      var id = $('wl-book').value, dt = $('wl-date').value, bk = books.find(function (x) { return String(x.id) === id; });
+      if (!bk) { cuteAlert('Pick a book from your plan first 🌱'); return; }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dt)) { cuteAlert('Pick the first day of that week 📅'); return; }
+      var end = new Date(dt + 'T00:00:00'); end.setDate(end.getDate() + 6);
+      if (end < new Date(new Date().toDateString())) { cuteAlert('That week is already over. Pick a week from today on 📅'); return; }
+      bk.lockWeek = dt; saveBooks(); $('wl-date').value = ''; afterPlanChange();
+      say('📌 “' + bk.title + '” is locked to the week of ' + fmtD(dt) + '.');
+      return;
+    }
+    if (t.dataset.act === 'vac') {
+      var f = $('wl-from').value, to = $('wl-to').value || f, lab = $('wl-label').value.trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(f)) { cuteAlert('Pick the first day you are away 🏖️'); return; }
+      if (to < f) { cuteAlert('The last day is before the first day 🍄'); return; }
+      vacList.push({ id: Date.now().toString(36), from: f, to: to, label: lab.slice(0, 60) || undefined }); saveVac();
+      ['wl-from', 'wl-to', 'wl-label'].forEach(function (k) { $(k).value = ''; });
+      afterPlanChange(); say('🏖️ Enjoy your trip! Your plan skips those days and your streak is safe.');
+    }
+  }
+  Hooks.on('switchTab', { after: function (a) { if (a[0] === 'schedule') wlRender(); } });
+  if (typeof currentTab !== 'undefined' && currentTab === 'schedule') wlRender();
+
+  /* ================= 3. Coming Soon: release tracker ================= */
+  var CSK = 'enchantedComingSoon';
+  var rel = LS(CSK, []); if (!Array.isArray(rel)) rel = [];
+  var csEdit = null;
+  var saveRel = function () { SV(CSK, rel); };
+  var todayK = function () { return dateKey(new Date()); };
+  var daysTo = function (k) { var a = new Date(k + 'T00:00:00'), b = new Date(new Date().toDateString()); return Math.round((a - b) / 864e5); };
+  var host = $('tab-content-favorites').parentNode;
+  host.insertAdjacentHTML('beforeend', '<div id="tab-content-soon" class="hidden flex-1 flex flex-col">'
+    + '<div class="cs-hero" id="cs-hero"><div class="cs-badge" aria-hidden="true"><span>🗓️</span></div><div class="cs-ht"><b>Coming Soon</b><small>Books you are waiting for, with a countdown to release day 🎀</small><div class="cs-chips" id="cs-chips"></div></div></div>'
+    + '<form class="cs-form" id="cs-form" autocomplete="off"><input id="cs-title" placeholder="Book title" aria-label="Book title"><input id="cs-author" placeholder="Author" aria-label="Author"><input id="cs-date" type="date" aria-label="Release date">'
+    + '<div class="cs-wide"><input id="cs-note" placeholder="Series, edition or a note (optional)" aria-label="Note"><input id="cs-link" placeholder="Link (optional)" aria-label="Link"><button type="submit" class="cs-go" id="cs-go">🗓️ Add release</button><button type="button" class="cs-cancel" id="cs-cancel" hidden>Cancel</button></div></form>'
+    + '<div id="soon-content"></div></div>');
+  var dock = $('side-dock');
+  if (dock) { var db = document.createElement('button'); db.className = 'dock-btn'; db.dataset.tab = 'soon'; db.title = 'Coming Soon'; db.setAttribute('aria-label', 'Coming Soon'); db.innerHTML = '🗓️<em class="dock-label">Coming Soon</em>'; db.onclick = function () { switchTab('soon'); }; dock.appendChild(db); }
+  function csRender() {
+    var box = $('soon-content'); if (!box) return;
+    var tk = todayK(), list = rel.slice().sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+    var up = list.filter(function (r) { return r.date >= tk; }), out = list.filter(function (r) { return r.date < tk; }).reverse();
+    var next = up[0], wk = up.filter(function (r) { return daysTo(r.date) <= 7; }).length, nd = next ? daysTo(next.date) : 0;
+    $('cs-chips').innerHTML = (up.length ? '<span class="cs-chip">🎀 ' + up.length + ' on the way</span>' : '') + (next ? '<span class="cs-chip">⏳ next: ' + (nd === 0 ? 'today!' : nd + ' day' + (nd === 1 ? '' : 's')) + '</span>' : '') + (wk ? '<span class="cs-chip">✨ ' + wk + ' within a week</span>' : '') + (out.length ? '<span class="cs-chip">🎉 ' + out.length + ' out now</span>' : '');
+    var changed = false;
+    var card = function (r) {
+      var d = daysTo(r.date), isOut = d < 0, isToday = d === 0;
+      if (!r.color) { r.color = getRandomColor(); changed = true; }
+      var cd = isToday ? '<span class="cs-cd">🎉 <strong>Out today!</strong></span>' : isOut ? '<span class="cs-cd">🎉 out since ' + E(fmtD(r.date, { month: 'short', day: 'numeric', year: 'numeric' })) + '</span>' : '<span class="cs-cd"><strong>' + d + '</strong> day' + (d === 1 ? '' : 's') + ' to go</span>';
+      var add = r.added ? '<span class="cs-done">✓ added to your ' + (r.added === 'lib' ? 'Library' : 'TBR') + '</span>' : '<button type="button" class="cs-a g" data-cs="tbr" data-id="' + E(r.id) + '">🌱 Add to TBR</button><button type="button" class="cs-a g" data-cs="lib" data-id="' + E(r.id) + '">📚 Library</button>';
+      var link = r.link && typeof safeUrl === 'function' && safeUrl(r.link) ? '<button type="button" class="cs-a" data-cs="link" data-id="' + E(r.id) + '">🔗 Link</button>' : '';
+      return '<div class="cs-card' + (isOut ? ' out' : '') + (isToday ? ' today' : '') + '"><div class="cs-cv" style="background:' + E(r.color) + '" aria-hidden="true">' + (isOut || isToday ? '🎁' : '📦') + '</div><div class="cs-tx"><b>' + E(r.title) + '</b>'
+        + (r.author ? '<small>by ' + E(r.author) + '</small>' : '') + '<small>📅 ' + E(fmtD(r.date, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })) + '</small>' + (r.note ? '<small>🎀 ' + E(r.note) + '</small>' : '') + cd
+        + '<div class="cs-acts">' + add + link + '<button type="button" class="cs-a" data-cs="edit" data-id="' + E(r.id) + '" aria-label="Edit">✎</button><button type="button" class="cs-a" data-cs="del" data-id="' + E(r.id) + '" aria-label="Remove">🗑</button></div></div></div>';
+    };
+    box.innerHTML = !list.length ? '<div class="cs-empty">🗓️ Nothing on the way yet. Add a book you are waiting for and watch the days count down 🌸</div>'
+      : (up.length ? '<div class="cs-sec">⏳ Coming up</div><div class="cs-list">' + up.map(card).join('') + '</div>' : '')
+      + (out.length ? '<div class="cs-sec" style="margin-top:16px">🎉 Out now</div><div class="cs-list">' + out.map(card).join('') + '</div>' : '');
+    if (changed) saveRel();
+  }
+  function csReset() { csEdit = null; ['cs-title', 'cs-author', 'cs-date', 'cs-note', 'cs-link'].forEach(function (k) { $(k).value = ''; }); $('cs-go').textContent = '🗓️ Add release'; $('cs-cancel').hidden = true; }
+  $('cs-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var t = $('cs-title').value.trim(), d = $('cs-date').value;
+    if (!t) { cuteAlert('Give the book a title first 🌱'); return; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) { cuteAlert('Pick the release date 📅'); return; }
+    var link = $('cs-link').value.trim(); if (link && typeof safeUrl === 'function' && !safeUrl(link)) { cuteAlert("That link doesn't look valid 🍄"); return; }
+    var o = { title: t.slice(0, 200), author: $('cs-author').value.trim().slice(0, 120) || undefined, date: d, note: $('cs-note').value.trim().slice(0, 160) || undefined, link: link || undefined };
+    if (csEdit) { var r = rel.find(function (x) { return x.id === csEdit; }); if (r) { if (r.date !== d) r.cheered = undefined; Object.assign(r, o); } }
+    else rel.push(Object.assign({ id: 'cs' + Date.now().toString(36) }, o));
+    saveRel(); csReset(); csRender();
+  });
+  $('cs-cancel').addEventListener('click', function () { csReset(); });
+  $('soon-content').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-cs]'); if (!b) return;
+    var r = rel.find(function (x) { return x.id === b.dataset.id; }); if (!r) return;
+    var a = b.dataset.cs;
+    if (a === 'del') { cuteConfirm('Remove “' + r.title + '” from Coming Soon?', { title: 'Remove this release?', ok: 'Remove' }).then(function (y) { if (!y) return; rel = rel.filter(function (x) { return x !== r; }); saveRel(); if (csEdit === r.id) csReset(); csRender(); }); }
+    else if (a === 'edit') { csEdit = r.id; $('cs-title').value = r.title; $('cs-author').value = r.author || ''; $('cs-date').value = r.date; $('cs-note').value = r.note || ''; $('cs-link').value = r.link || ''; $('cs-go').textContent = '💾 Save changes'; $('cs-cancel').hidden = false; $('cs-title').focus(); }
+    else if (a === 'link') { var u = safeUrl(r.link); if (u) window.open(u, '_blank', 'noopener'); }
+    else if (a === 'tbr' || a === 'lib') {
+      var mins = 360;
+      var nb = normalizeBook({ title: r.title, authors: r.author ? [r.author] : undefined, durationStr: formatTime(mins), duration: mins, minutesRead: 0, read: false, coverColor: r.color || getRandomColor(), rating: 0, review: '', addedAt: Date.now(), link: r.link || undefined, vault: a === 'lib' ? true : undefined });
+      books.push(nb); saveBooks(); try { renderBooks(); } catch (x) {}
+      r.added = a; saveRel(); csRender();
+      say((a === 'lib' ? '📚 “' + r.title + '” is in your Library.' : '🌱 “' + r.title + '” is planted at the end of your TBR.') + ' The reading time is a 6h guess; change it any time.', { label: 'Edit details', onClick: function () { try { openReviewModal(books.indexOf(nb)); } catch (x) {} } });
+    }
+  });
+  Hooks.on('switchTab', {
+    before: function () { var c = $('tab-content-soon'); if (c) c.classList.add('hidden'); },
+    after: function (a) {
+      var t = a[0];
+      if (t === 'soon') { $('tab-content-soon').classList.remove('hidden'); currentTab = t; $('tab-content-soon').closest('.card').classList.add('sched-fit'); csRender(); }
+      var db2 = document.querySelector('#side-dock .dock-btn[data-tab="soon"]'); if (db2) db2.classList.toggle('active', t === 'soon');
+    }
+  });
+  setTimeout(function () {   // release-day hello, once per book
+    var tk = todayK(), hit = rel.filter(function (r) { return r.date === tk && !r.cheered; });
+    hit.forEach(function (r) { r.cheered = 1; say('🎉 “' + r.title + '” comes out today!', { label: 'Coming Soon', onClick: function () { switchTab('soon'); } }); });
+    if (hit.length) saveRel();
+  }, 2500);
+  window.csRender = csRender;
 })();
 </script>
 <style id="fin-covers-stars-css">
