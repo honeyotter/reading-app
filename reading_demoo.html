@@ -5274,6 +5274,8 @@ window.SAFE = SAFE;
 .sr-tools{margin-left:auto;display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap}.sr-collapse:disabled{opacity:.45;cursor:default}
 .sr-per{font:700 11px 'Playfair Display',serif;color:rgb(var(--c-6b705c));background:#fff;border:1px solid rgb(var(--c-e8c4c4));border-radius:99px;padding:4px 10px;outline:0;cursor:pointer}
 .sr-pager{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin:4px 0 12px}.sr-pager span{font-size:11px;font-weight:700;color:rgb(var(--c-6b705c))}.sr-pager button{background:rgb(var(--c-e8c4c4)/0.502);color:rgb(var(--c-3e4a3d));font-size:10px;font-weight:700;padding:4px 10px;border-radius:6px}.sr-pager button:hover:not(:disabled){background:rgb(var(--c-e8c4c4))}.sr-pager button:disabled{opacity:.4}
+/* TBR tab: box fits its content too, so the hero, search and filters scroll away with the page (like Finished / Library) */
+.card.sched-fit #tab-content-backlog,.card.sched-fit #book-list{overflow:visible;flex:none}
 /* Finished tab: box fits its content */
 .card.sched-fit #tab-content-reviews,.card.sched-fit #reviews-list,.card.sched-fit #tab-content-soundtrack,.card.sched-fit #soundtrack-content{overflow:visible;flex:none}
 </style>
@@ -5785,7 +5787,7 @@ body{padding-left:62px}
     window.__lastMins = parseInt($('daily-minutes').value) || 0;
 
     // Schedule box shrinks to fit the trail instead of stretching to a fixed height
-    AppEvents.on('tab:switched', t => card.classList.toggle('sched-fit', t === 'schedule'));
+    AppEvents.on('tab:switched', t => card.classList.toggle('sched-fit', t === 'schedule' || t === 'backlog'));
 })();
 </script>
 <style>
@@ -6004,7 +6006,8 @@ body{padding-left:62px}
 
     // ===================== Sessions tab: box fits its content =====================
     const card = $('tab-content-sessions').closest('.card');
-    Hooks.on('switchTab', { after([t]) { card.classList.toggle('sched-fit', t === 'schedule' || t === 'sessions' || t === 'year' || t === 'reviews' || t === 'soundtrack'); } });
+    Hooks.on('switchTab', { after([t]) { card.classList.toggle('sched-fit', t === 'backlog' || t === 'schedule' || t === 'sessions' || t === 'year' || t === 'reviews' || t === 'soundtrack'); } });
+    if (currentTab === 'backlog') card.classList.add('sched-fit');   // TBR opens first: the whole page scrolls, so the header slides away and the books get the room
     if (currentTab === 'year') renderYear(); if (currentTab === 'month') renderMonth();
 })();
 </script>
