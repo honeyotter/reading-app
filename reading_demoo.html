@@ -3289,7 +3289,7 @@ function authorLinks(b) { return authorsOf(b).map(n => `<button type="button" da
             <div class="flex items-center gap-2">
                 <span class="text-[rgb(var(--c-5f6e3a))] shrink-0">${icon(c.key, 18)}</span>
                 <div class="flex-1 min-w-0">
-                    <div class="text-xs font-bold text-[rgb(var(--c-3e4a3d))] leading-tight">${c.label}</div>
+                    <div class="text-xs font-bold text-[rgb(var(--c-3e4a3d))] leading-tight">${c.label}${typeof catW === 'function' && catW(c.key) !== 1 ? `<span class="cw-b" title="Counts ${catWLabel(c.key)} in the average">${catWLabel(c.key)}</span>` : ''}</div>
                     <div class="text-[10px] text-[rgb(var(--c-6b705c))] leading-tight">${c.hint}</div>
                 </div>
                 <div class="fr-dots">${[1, 2, 3, 4, 5].map(n => `<button type="button" onclick="setCatRating('${c.key}', ${n})" class="fr-dot${n <= (catRatings[c.key] || 0) ? ' on' : ''}" title="${n}" aria-label="${c.label} ${n} of 5"></button>`).join('')}</div>
@@ -11229,7 +11229,7 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
     [['#col-left'], 'backlog', `Your home panel 🌿`, 'Essentials', `<p>The left column is your <b>dashboard</b> and updates live as you read:</p><ul><li>🌷 <b>Progress Garden</b> – one flower per finished book, and the <b>goal ring</b> for today's minutes</li><li>📌 <b>Next up</b>, 🔥 <b>Reading streak</b>, 🎀 <b>Quest Board</b> (stars grow Pip), 🎡 <b>TBR Roulette</b>, 🔮 <b>Whisper me some recs</b>, 🎃 <b>Seasonal events</b> and ✨ <b>Fairy Whisper</b></li><li>💾 <b>Back up</b>, <b>Restore</b> and <b>Reset</b> at the bottom</li></ul><p>The <b>❓ Quick tour</b> at the top of this panel walks through every card.</p>`],
     [tabs, null, `Tabs and docks 🧭`, 'Essentials', `<ul><li>The tab bar along the top: 📜 <b>TBR</b> (books to read), 🗓️ <b>Weekly Path</b> (your schedule), ✨ <b>Finished</b> (reviews and ratings), 📚 <b>Library</b> (every unread book you own), 🔮 <b>Future Chapters</b>, 📖 <b>Reading Now</b>, 📊 <b>Year in Review</b>, 🌙 <b>Monthly Recap</b>, 🕰️ <b>Sessions</b>, 🪦 <b>Graveyard</b> and 💖 <b>Favorites</b>. Scroll it sideways if it does not all fit; the numbers count the books in each. It stays pinned at the top while you scroll.</li><li>The <b>docks</b> on the screen edges hold shortcuts (hover an icon for its name). <b>Right:</b> 🕰️ Sessions, 💖 Favorites, 🎵 Book Soundtrack, 🏆 All-Time Bracket, 📚 Bookshelf, ❝ Quotes, 🗓️ Coming Soon (release countdowns). <b>Left:</b> 🔮 Future Chapters, 📊 Year in Review, 🌙 Monthly Recap, 📚 Series Tracker, 🪦 Graveyard, 🧹 Tidy duplicates.</li><li>↶ ↷ at the top right <b>undo and redo</b> your changes (Ctrl/⌘ + Z).</li></ul><p>Every tab and dock page has its own <b>❓ Quick tour</b>.</p>`],
     [[up('#new-title', 1)], 'backlog', `Add a book: Plant 🌱`, 'Essentials', `<p>Type a title, enter how long it takes to read, then press <b>🌱 Plant</b>. The time powers your schedule, so a rough guess is fine.</p><ul><li><b>Tap a cover</b> in Covers view to open the book's edit panel</li><li>The whole TBR page scrolls, so the header slides away and your books get the room</li><li>🔮 <b>Scroll Sorcery</b> (Bulk add, Shuffle, From graveyard), 🪄 <b>Quick Enchant</b>, 🎀 <b>Filters</b>, search, the month pages and the List / Grid / Covers views are all in the TBR's <b>❓ Quick tour</b></li></ul>`],
-    [[box('#review-modal')], null, `Edit and review a book ✎`, 'Essentials', `<p>Open any book with <b>✎ / Edit details</b>, or by tapping its cover in the TBR's Covers view.</p><ul><li>🌸 <b>Basics</b>: cover, title, authors, pages, fandoms, pairings, link and dates</li>{{AO3}}<li>🏷️ <b>Tags &amp; series</b>: tags, warnings and vibes</li><li>✍️ <b>Rate &amp; review</b>: <b>fairy ratings</b> (tap a dot, 1 to 5, per category), thoughts, feelings and mood, highlights</li><li>🎵 <b>Extras</b>: scenes, theories, best / weakest, quotes, songs and the 🌳 family tree</li></ul><p>The <b>❓ Quick tour</b> in this window's header explains every tab.</p>`, null, hookReview(false, false)],
+    [[box('#review-modal')], null, `Edit and review a book ✎`, 'Essentials', `<p>Open any book with <b>✎ / Edit details</b>, or by tapping its cover in the TBR's Covers view.</p><ul><li>🌸 <b>Basics</b>: cover, title, authors, pages, fandoms, pairings, link and dates</li>{{AO3}}<li>🏷️ <b>Tags &amp; series</b>: tags, warnings and vibes</li><li>✍️ <b>Rate &amp; review</b>: <b>fairy ratings</b> (tap a dot, 1 to 5, per category), 😢 tears, character and ship ratings, thoughts, feelings and mood, highlights</li><li>🎵 <b>Extras</b>: scenes, theories, best / weakest, quotes, songs, the 🌳 family tree and a 📓 book journal with prompts</li></ul><p>The <b>❓ Quick tour</b> in this window's header explains every tab.</p>`, null, hookReview(false, false)],
     [[up('#start-date', 3)], 'schedule', `Plan your reading 🗓️`, 'Essentials', `<p>Tell the app <b>when you start</b> and either a <b>target date</b> or your <b>daily minutes</b>, then press <b>Weave</b>. It builds a day-by-day trail from your backlog, with optional rest days and different minutes for each weekday.</p><p>📌 <b>Lock a book to a week</b> for a book club or event, and add 🏖️ <b>vacation days</b> that the plan skips without breaking your streak.</p>`],
     [['.lb-hero', '#tab-btn-lib'], 'lib', `Your Library 📚`, 'Essentials', `<p><b>📚 Library</b> holds every unread book you own. Only the ones you put <b>in your plan</b> show up in the TBR and the Weekly Path; the rest wait here until you are ready.</p><p>Search, filter, and <b>☑ Select multiple</b> → <b>🌷 Program selected</b> to drop many books into your plan at once (next up, at the end, or spread evenly).</p>`],
     [['#tab-btn-future', '.dock-btn[data-tab="future"]'], null, `Future Chapters 🔮`, 'Essentials', `<p>The <b>🔮 Future Chapters</b> tab (also at the top of the left dock) shows every book in your plan laid out <b>year by year and month by month</b>, with its cover and the day you will finish it. Perfect for plans that run over several years.</p>`],
@@ -11303,10 +11303,12 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
     [['#ao-wrap'], null, `Importing from AO3 🌸`, 'AO3 import', `<p>You said you read on AO3, so the import is switched on. You will find <b>🌸 Import from AO3</b> in two places: the <b>Basics</b> tab of a book's review window (✎), and on every card in the <b>Quick Enchant</b> panel.</p><ul><li>On the work's AO3 page, <b>select the tag block</b> (Rating, Archive Warning, Fandom, Relationship, Characters, Additional Tags) and copy it.</li><li>Paste it into the box. Copying straight from the page keeps the line breaks, which gives the best result.</li><li>Press <b>✨ Sort it</b>. Everything is sorted into <b>fandoms, pairings, characters, tags, warnings and vibes</b>, matched to what you already use. You get a preview first and choose what to add.</li><li><b>Clear</b> empties the box if you want to start over.</li></ul><p>Changed your mind? Replay this tour from <b>⚙️ Settings</b> and answer the first question differently.</p>`, 'ao', hookReview('basics')],
     [['#details-collapse'], null, `Review window: 🏷️ Tags & series`, 'Editing a book', `<ul><li><b># Trope tags</b>, <b>⚠️ Content warnings</b> and <b>✨ Vibes</b> – tap a chip to add it, or type your own. Each label has exactly one home, so nothing is duplicated across the three. Need to rename or merge labels? Use the <b>🏷️ Tag manager</b> in ⚙️ Settings.</li><li><b>Series / Parts</b> – tick every other book in the series and they all get linked together</li></ul>`, null, hookReview('tags')],
     [['#full-review'], null, `Review window: ✍️ Rate & review`, 'Editing a book', `<ul><li>🧚 <b>Fairy Ratings</b> – tap a dot per category (tap again to clear); the <b>average</b> is worked out for you. <b>✏️ Edit rating categories</b> renames, removes or adds categories.</li><li>🖋️ <b>Summary</b> and <b>Your Thoughts &amp; Reflections</b>, with <b>💡 Stuck? Get a prompt</b> for a writing nudge. A 📝 word counter sits under your thoughts and cheers when it becomes your longest review yet</li></ul><p>Feelings and highlights sit just below, and the next two steps cover them.</p>`, null, hookReview('review')],
+    [['#hx-card'], null, `Rate & review: hearts & tears 💞`, 'Editing a book', `<ul><li>😢 <b>Tears meter</b> – tap ＋ every time it made you cry (− takes one back). Finished cards show 😢×3</li><li>🧚 <b>Character ratings</b> – tap a family-tree name (or type any character) and give them 1 to 5 ★ with a short why. 📝 opens their <b>profile</b>: appearance, personality and favourite moments, shared across every book they are in</li><li>💞 <b>Ship chemistry</b> – 1 to 5 ♥ for every pairing you added in Basics</li></ul>`, null, hookReview('review')],
     [['#feel-box'], null, `Rate & review: feelings and mood`, 'Editing a book', `<ul><li>💫 <b>What did it make you feel?</b> – tap everything that applies: <b>big feelings</b>, <b>in my body</b>, <b>it made me…</b> and <b>it felt like…</b>, plus your own</li><li>🌦️ <b>Overall mood weather</b> – sunny, stormy, moonlit…</li><li>💥 <b>Emotional damage</b> – a meter from unscathed to wrecked</li></ul><p>These feed the pie charts and the Taste page in Year in Review.</p>`, null, hookReview('review')],
     [['#hl-box'], null, `Rate & review: highlights & quotes`, 'Editing a book', `<ul><li>❝ <b>Highlights &amp; Quotes</b> – add lines you loved, tap any to edit, and tap the 💖 to send it to your <b>Quote Collection</b>. <b>🍎 Import from Apple Books</b> pastes in your Apple Books notes and sorts them out for you.</li></ul><p>Press <b>Save Reflection</b> when you are done.</p>`, null, hookReview('review')],
-    [['#mx-rv'], null, `Review window: 🎵 Extras (1/2)`, 'Editing a book', `<ul><li>🌿 <b>Go deeper</b> – 🔁 <b>Would I reread it?</b> with a <b>When?</b> note, 🎬 <b>Favorite scenes</b>, 🌱 <b>First impressions</b> (written before page one), 🔮 <b>Theories</b> you can revisit, and the 🌳 family tree</li><li>⚖️ <b>Best, weakest &amp; what I'd change</b></li><li>❝ <b>Quotes</b> – one per line</li><li>🎵 <b>Songs that represent this book</b> – paste an Apple Music link or just search for a song, and <b>＋ Add another song</b> as often as you like. They all land on the Book Soundtrack.</li></ul><p>The finished-book review cards show these too.</p>`, null, hookReview('extras')],
-    [['#mx-fm'], null, `Extras: 🌳 family tree and characters (2/2)`, 'Editing a book', `<p>🌳 <b>Family tree</b> keeps a book's characters and how they relate.</p><ul><li>Add a character, then draw relationships between them; names are grouped by <b>house</b> and each relationship has its own coloured line</li><li><b>Zoom</b> and <b>drag</b> to pan around a big tree</li><li>☆ <b>Star</b> a character to add them to your favorite characters</li><li>A small badge shows <b>how many books</b> a character appears in</li></ul><p>Characters you add here also fill the <b>Characters</b> filter in the TBR.</p>`, null, hookTree],
+    [['#mx-rv'], null, `Review window: 🎵 Extras (1/3)`, 'Editing a book', `<ul><li>🌿 <b>Go deeper</b> – 🔁 <b>Would I reread it?</b> with a <b>When?</b> note, 🎬 <b>Favorite scenes</b>, 🌱 <b>First impressions</b> (written before page one), 🔮 <b>Theories</b> you can revisit, and the 🌳 family tree</li><li>⚖️ <b>Best, weakest &amp; what I'd change</b></li><li>❝ <b>Quotes</b> – one per line</li><li>🎵 <b>Songs that represent this book</b> – paste an Apple Music link or just search for a song, and <b>＋ Add another song</b> as often as you like. They all land on the Book Soundtrack.</li></ul><p>The finished-book review cards show these too.</p>`, null, hookReview('extras')],
+    [['#jn-card'], null, `Extras: 📓 book journal (2/3)`, 'Editing a book', `<p>A journal that goes beyond the review. Tap <b>🎲 Give me a prompt</b> (“Write a letter to the main character”, “Rewrite a scene from another point of view”… there are 40), write, and press <b>💾 Add entry</b>. Entries are dated; ✎ edits and ✕ removes them. Press <b>Save Reflection</b> to keep them.</p>`, null, hookReview('extras')],
+    [['#mx-fm'], null, `Extras: 🌳 family tree and characters (3/3)`, 'Editing a book', `<p>🌳 <b>Family tree</b> keeps a book's characters and how they relate.</p><ul><li>Add a character, then draw relationships between them; names are grouped by <b>house</b> and each relationship has its own coloured line</li><li><b>Zoom</b> and <b>drag</b> to pan around a big tree</li><li>☆ <b>Star</b> a character to add them to your favorite characters</li><li>A small badge shows <b>how many books</b> a character appears in</li></ul><p>Characters you add here also fill the <b>Characters</b> filter in the TBR.</p>`, null, hookTree],
     ],
     'lib': [
     [['.lb-hero', '#tab-content-lib'], 'lib', `Your Library 📚`, 'Library', `<p>Every unread book you own. Only the ones <b>in your plan</b> show up in your TBR and Weekly Path; the rest wait here. The top card counts them, shows how much of your library is planned, and the <b>🎀 Up next</b> shelf shows the first books of your plan.</p>`],
@@ -11348,7 +11350,7 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
     [['#abandoned-list', '#tab-content-abandoned'], 'abandoned', `Graveyard 🪦`, 'Library', `<p>Books you stopped reading rest here under twinkling stars. Send one with <b>🪦 Lay to rest</b> in its card's <b>⋯</b> menu.</p><ul><li>Tap an <b>epitaph</b> to rewrite it</li><li>🪦 <b>Why do you stop?</b> – tap reasons on a tombstone and the patterns show up</li><li><b>↩ Resurrect</b> sends a book back to your backlog, ✎ edits it and 🗑️ removes it</li><li><b>📅 Add to plan</b> schedules a buried book in your backlog and Weekly Path while it stays here</li></ul>`],
     ],
     'favorites': [
-    [['#favorites-content'], 'favorites', `Favorites 💖`, 'Library', `<p>Your favorite books on a wooden shelf. Tap a cover for details, or 💔 to take it off the shelf.</p><ul><li>🧚 <b>Favorite characters</b> – star them in a book's character list, or <b>＋ Add</b> one here</li><li>🌟 <b>Recurring cast</b> – characters who show up in more than one book</li></ul>`],
+    [['#favorites-content'], 'favorites', `Favorites 💖`, 'Library', `<p>Your favorite books on a wooden shelf. Tap a cover for details, or 💔 to take it off the shelf.</p><ul><li>🧚 <b>Favorite characters</b> – star them in a book's character list, or <b>＋ Add</b> one here. Tap a character to see their page, with their 🧚 profile (look, personality, favourite moments) and your average ★ rating</li><li>🌟 <b>Recurring cast</b> – characters who show up in more than one book</li></ul>`],
     ],
     'quotes': [
     [['#tab-content-quotes'], 'quotes', `Quotes ❝`, 'Library', `<p>The <b>Quote Collection</b> gathers every 💖 highlight from every book, with a running count. Add or import highlights (including <b>from Apple Books</b>) inside a book's review, then tap the heart.</p>`],
@@ -11378,7 +11380,7 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
     [['#ev-sec'], 'settings', `Settings: seasonal events 🎃`, 'Settings', `<p>Switch <b>Show seasonal events</b> off to hide the event card from the home panel, and on again whenever you like. Your goals and ticked prompts are kept.</p>`],
     [['#st-s-reading-now'], 'settings', `Reading Now 📖`, 'Settings', `<p><b>Reading limit</b> sets how many books you like to keep open (Off, or 1 to 6). Start one more and a gentle nudge offers to 🌙 save one for later. Saved-for-later books never count.</p><p><b>Ask where I read 📍</b> turns the little after-logging bubble on or off.</p>`],
     [['#st-s-help-and-tours'], 'settings', `Help & tours 🧭`, 'Settings', `<p><b>Mini-tour buttons ❓</b> switches the small Quick tour buttons on every tab on or off. <b>▶ Replay tour</b> runs the full walkthrough of the app again.</p>`],
-    [['#st-s-tag-manager', '#st-s-rating-categories'], 'settings', `Tags and rating categories 🏷️`, 'Settings', `<ul><li><b>🏷️ Open tag manager →</b> renames, merges and recategorises every tag, warning and vibe (it has its own Quick tour)</li><li><b>Rating categories</b> lists what your 🧚 fairy ratings score; <b>✏️ Edit rating categories</b> renames, removes or adds them, and old ratings are kept safely</li></ul>`],
+    [['#st-s-tag-manager', '#st-s-rating-categories'], 'settings', `Tags and rating categories 🏷️`, 'Settings', `<ul><li><b>🏷️ Open tag manager →</b> renames, merges and recategorises every tag, warning and vibe (it has its own Quick tour)</li><li><b>Rating categories</b> lists what your 🧚 fairy ratings score; <b>✏️ Edit rating categories</b> renames, removes or adds them, and old ratings are kept safely. ⚖️ Tap a category chip to make it count 2× or ½× in each book's average</li></ul>`],
     [['#st-s-covers-and-storage'], 'settings', `Covers & storage 🖼️`, 'Settings', `<p>Choose the cover quality and see how much browser space your covers use. Big libraries with full-quality covers take more room.</p>`],
     [['#st-s-fill-in-missing-info'], 'settings', `Fill in missing info 🩹`, 'Settings', `<p>Upload a CSV of books you already have and only the <b>empty</b> spots are filled (author, publisher, year, pages, link). You review every change in a table first, and one ↶ undo reverts it.</p>`],
     [['#ibk-sec'], 'settings', `Import new books 📥`, 'Settings', `<p>Found a CSV of books that are not in your library yet? Press <b>Choose CSV…</b> to add them.</p><ul><li>Books you already have, and repeats inside the file, are skipped. Wishlist books stay out unless you tick them in</li><li><b>Spread evenly through my backlog</b> slots the new books in between your existing ones in a <b>Long → Short → Medium</b> pattern (pick another order if you like)</li><li><b>Start spreading evenly after…</b> lets you choose the book the spreading begins after. Books before it stay exactly where they are. Type in the search box to find it fast</li><li>Or send them all to the <b>top</b> or <b>end</b> of the backlog instead</li><li>Tick <b>Also re-sort my existing unread books</b> if your current backlog does not follow the pattern yet</li><li>The bookshelf preview shows your backlog <b>now</b> and <b>after</b>. 🌷 short, 🍃 medium and 🔮 long have their own colours, new books wear a gold 🎀 ribbon, and 📍 marks the book you chose. 🎲 <b>Reshuffle</b> tries another random spread</li></ul><p>Nothing changes until you press <b>Add books</b>, and <b>↩ Undo import</b> reverses it.</p>`],
@@ -12746,7 +12748,7 @@ div:has(>#tab-btn-backlog){flex-shrink:0}
     var ui = window.UISET ? UISET.get() : { dens: 'cozy', fz: 100 };
     var th = document.documentElement.dataset.theme || 'sage', cur = themes().filter(function (x) { return x[0] === th; })[0] || themes()[0];
     var safe = window.SAFE ? SAFE.on() : false, ao = get('enchantedAo3') !== 'no', lv = get('enchantedLevi') !== 'no', mn = get('enchantedMini') !== 'no';
-    var cats = (typeof CATEGORIES !== 'undefined' ? CATEGORIES : []).map(function (c) { return '<span class="st-chip">' + E(c.label) + '</span>'; }).join('') || '<span class="st-t"><small>No categories yet.</small></span>';
+    var cats = (typeof CATEGORIES !== 'undefined' ? CATEGORIES : []).map(function (c) { var w = window.catW ? catW(c.key) : 1; return '<button type="button" class="st-chip st-cw' + (w === 2 ? ' w2' : w === 0.5 ? ' wh' : '') + '" data-act="catw" data-v="' + E(c.key) + '" title="Tap to change how much it counts">' + E(c.label) + ' <b>' + (window.catWLabel ? catWLabel(c.key) : '1×') + '</b></button>'; }).join('') || '<span class="st-t"><small>No categories yet.</small></span>';
     var top = box.scrollTop;
     box.innerHTML = '<div class="st-wrap">'
 
@@ -12779,7 +12781,7 @@ div:has(>#tab-btn-backlog){flex-shrink:0}
       + '</section>'
 
       + '<section class="st-sec" aria-label="Rating categories"><h4 class="st-h"><i class="st-ic" aria-hidden="true">⭐</i><span>Rating categories<small>What your fairy ratings score</small></span></h4>'
-      + '<div class="st-row stack"><div class="st-t"><small style="margin:0">What you rate each book on. Rename, remove or add; old ratings are kept safely.</small></div><div class="st-chips">' + cats + '</div>'
+      + '<div class="st-row stack"><div class="st-t"><small style="margin:0">What you rate each book on. Rename, remove or add; old ratings are kept safely.</small><small>⚖️ Tap a category to change how much it counts in a book\'s average: 1× → 2× → ½×. Every rating updates right away, and your dots never change.</small></div><div class="st-chips">' + cats + '</div>'
       + ($('cm-b') ? '<div><button type="button" class="st-btn" data-act="cats">✏️ Edit rating categories</button></div>' : '') + '</div>'
       + '</section>'
 
@@ -12886,6 +12888,7 @@ div:has(>#tab-btn-backlog){flex-shrink:0}
     else if (a === 'nowlim') { if (window.setNowLimit) setNowLimit(v); pick('.ui-seg [data-act="nowlim"]'); try { if (window.__nowRefresh) __nowRefresh(); } catch (x) {} }
     else if (a === 'fz') { UISET.setFz(UISET.get().fz + parseInt(v, 10)); var r = $('st-fz'), o = $('st-fv'); if (r) r.value = UISET.get().fz; if (o) o.textContent = UISET.get().fz + '%'; }
     else if (a === 'dreset') { UISET.reset(); render(); }
+    else if (a === 'catw') { if (window.cycleCatW) { cycleCatW(v); render(); } }
     else if (a === 'cats') { var c = $('cm-b'); if (c) { c.click(); watchModal(); } }
     else if (a === 'csv') { if (window.downloadCSV) downloadCSV(); }
     else if (a === 'bk') {
@@ -15566,7 +15569,7 @@ p.wpx-title{display:flex!important;align-items:center;gap:12px;margin:0 0 12px!i
     // exact rating: category scores are saved rounded to 1 decimal, so recompute the true average when we have them
     function exact(b) {
         const v = b && b.ratings ? Object.values(b.ratings).filter(n => n > 0) : [];
-        if (v.length && b.rating > 0) return v.reduce((a, n) => a + n, 0) / v.length;
+        if (v.length && b.rating > 0) return typeof calcAvgExact === 'function' ? calcAvgExact(b.ratings) : v.reduce((a, n) => a + n, 0) / v.length;
         return b && b.rating > 0 ? +b.rating : 0;
     }
     const show = r => String(Math.round(r * 100) / 100);   // 3.8125 -> "3.81", 4.5 -> "4.5", 5 -> "5"
@@ -17116,6 +17119,273 @@ p.wpx-title{display:flex!important;align-items:center;gap:12px;margin:0 0 12px!i
     var s = e.target.closest && e.target.closest('[data-cmp]'); if (!s) return;
     if (s.dataset.cmp === 'a') cmpA = s.value; else cmpB = s.value; paint('cmp');
   });
+})();
+</script>
+<style id="b3-css">
+/* ===== Batch 3: rating weights, tears, character & ship ratings, character profiles, book journal ===== */
+.cw-b{display:inline-block;margin-left:4px;padding:0 6px;border-radius:99px;background:rgb(var(--c-fff8c0,255 248 192));border:1px solid rgb(var(--c-f0d0d8));font:800 9px Montserrat,sans-serif;color:rgb(var(--c-8f4d62));vertical-align:1px}
+#settings-content .st-cw{cursor:pointer}#settings-content .st-cw b{font-weight:900;color:rgb(var(--c-a8506a));margin-left:2px}
+#settings-content .st-cw.w2{background:rgb(var(--c-fdeef2));border-color:rgb(var(--c-e8a0b4))}#settings-content .st-cw.wh{opacity:.75;border-style:dashed}
+.hx-sec{padding:10px 0;border-top:1.5px dashed rgb(var(--c-f0d0d8))}.hx-sec:first-of-type{border-top:0;padding-top:2px}
+.hx-h{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}.hx-h b{font:800 12.5px Montserrat,sans-serif;color:rgb(var(--c-3e4a3d))}.hx-h small{font-size:10.5px;color:rgb(var(--c-6b705c))}
+.tm-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tm-btn{width:32px;height:32px;border-radius:50%;border:2px solid rgb(var(--c-c9d9e8,201 217 232));background:#fff;font:800 15px sans-serif;color:#5b8db8;cursor:pointer}
+.tm-drops{flex:1;min-width:120px;min-height:34px;display:flex;align-items:center;flex-wrap:wrap;gap:2px;padding:4px 10px;border-radius:99px;background:linear-gradient(90deg,#eef6ff,#f6f0fb);border:1.5px solid #cfe0f2;font-size:17px}
+.tm-drops span{display:inline-block;animation:tmDrop .35s ease-out}@keyframes tmDrop{from{transform:translateY(-6px);opacity:0}}
+.tm-drops em{font:italic 600 11px 'Playfair Display',serif;color:#6b7c93}
+.tm-lbl{font:800 11px Montserrat,sans-serif;color:#5b8db8;min-width:84px}
+.cr-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 9px;margin-bottom:6px;border-radius:14px;background:#fff;border:1.5px solid rgb(var(--c-f0d0d8))}
+.cr-n{font:800 12px Montserrat,sans-serif;color:rgb(var(--c-3e4a3d));min-width:90px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cr-st{display:flex;gap:1px}.cr-st button{width:22px;height:22px;border:0;background:none;padding:0;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:rgb(var(--c-e6dcdc));transition:transform .12s}
+.cr-st button.on{color:#f5b942}.cr-st.h button.on{color:#ef7aa0}.cr-st button:hover{transform:scale(1.2)}
+.cr-note{flex:1 1 140px;min-width:0;padding:5px 9px;border-radius:10px;border:1.5px solid rgb(var(--c-e8c4c4));font:600 11px Montserrat,sans-serif;color:rgb(var(--c-3e4a3d));outline:0}
+.cr-mini{width:26px;height:26px;border-radius:50%;border:1.5px solid rgb(var(--c-e8c4c4));background:#fff;font-size:12px;cursor:pointer;color:rgb(var(--c-a8506a))}
+.cr-add{display:flex;gap:6px;flex-wrap:wrap}.cr-add input{flex:1 1 160px;min-width:0;padding:6px 10px;border-radius:12px;border:1.5px dashed rgb(var(--c-e8a0b4));font:600 11px Montserrat,sans-serif;outline:0}
+.cr-add button,.jn-btn{padding:6px 13px;border-radius:99px;border:0;background:linear-gradient(90deg,rgb(var(--c-e8a0b4)),rgb(var(--c-a8506a)));color:#fff;font:800 10.5px Montserrat,sans-serif;cursor:pointer}
+.cr-sugg{display:flex;flex-wrap:wrap;gap:5px;margin:4px 0 6px}.cr-sugg button{padding:3px 10px;border-radius:99px;border:1.5px dashed rgb(var(--c-f0d0d8));background:#fff;font:700 10px Montserrat,sans-serif;color:rgb(var(--c-6b705c));cursor:pointer}
+.hx-empty{font:italic 600 11px 'Playfair Display',serif;color:rgb(var(--c-6b705c));margin:2px 0 6px}
+/* journal */
+.jn-prompt{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.jn-q{flex:1 1 220px;min-height:36px;padding:8px 12px;border-radius:16px 16px 16px 4px;background:linear-gradient(135deg,rgb(var(--c-f6f0fb)),rgb(var(--c-fdeef2)));border:1.5px solid rgb(var(--c-e0b8c0));font:italic 600 12px/1.4 'Playfair Display',serif;color:rgb(var(--c-8f4d62))}
+.jn-ta{width:100%;min-height:90px;padding:10px 12px;border-radius:14px;border:1.5px solid rgb(var(--c-e8c4c4));background:repeating-linear-gradient(#fff 0 22px,rgb(var(--c-fdeef2)) 22px 23px);font:500 12px/23px Montserrat,sans-serif;color:rgb(var(--c-3e4a3d));outline:0;resize:vertical}
+.jn-ta:focus{border-color:rgb(var(--c-8a9a5b))}
+.jn-acts{display:flex;justify-content:flex-end;gap:6px;margin-top:6px}
+.jn-alt{padding:6px 13px;border-radius:99px;border:1.5px solid rgb(var(--c-e8c4c4));background:#fff;color:rgb(var(--c-3e4a3d));font:800 10.5px Montserrat,sans-serif;cursor:pointer}
+.jn-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.jn-e{position:relative;padding:10px 12px 10px 14px;border-radius:14px;background:#fff;border:1.5px solid rgb(var(--c-f0d0d8));box-shadow:3px 3px 0 rgb(var(--c-fdeef2))}
+.jn-e::before{content:'';position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:3px;background:rgb(var(--c-e8a0b4))}
+.jn-e small{display:block;font:700 9.5px Montserrat,sans-serif;color:rgb(var(--c-a8506a));letter-spacing:.04em;text-transform:uppercase}
+.jn-e i{display:block;font:italic 600 11px 'Playfair Display',serif;color:rgb(var(--c-8f4d62));margin:2px 0 4px}
+.jn-e p{margin:0;white-space:pre-wrap;font-size:11.5px;line-height:1.5;color:rgb(var(--c-3e4a3d))}
+.jn-e .jn-x{position:absolute;top:6px;right:6px;display:flex;gap:4px}
+/* character profile dialog + view */
+.cp-ov{position:fixed;inset:0;z-index:10050;background:rgb(var(--c-3e4a3d)/.35);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:14px}
+.cp-card{width:min(520px,100%);max-height:90vh;overflow:auto;padding:18px 20px;border-radius:26px;background:#fffdfb;border:2px solid rgb(var(--c-f4c9d2));box-shadow:0 20px 50px -20px rgb(var(--c-a8506a)/.6)}
+.cp-card h3{margin:0 0 2px;font:800 19px 'Playfair Display',serif;color:rgb(var(--c-a8506a))}
+.cp-card>p{margin:0 0 12px;font:italic 600 11.5px 'Playfair Display',serif;color:rgb(var(--c-6b705c))}
+.cp-f{display:block;margin:0 0 10px}.cp-f b{display:block;margin-bottom:4px;font:800 11.5px Montserrat,sans-serif;color:rgb(var(--c-3e4a3d))}
+.cp-f textarea,.cp-f input,.cp-f select{width:100%;padding:8px 11px;border-radius:12px;border:1.5px solid rgb(var(--c-e8c4c4));font:500 12px/1.45 Montserrat,sans-serif;color:rgb(var(--c-3e4a3d));outline:0;background:#fff}
+.cp-mo{display:flex;flex-direction:column;gap:5px;margin-bottom:6px}
+.cp-m{display:flex;gap:8px;align-items:flex-start;padding:6px 9px;border-radius:12px;background:rgb(var(--c-fdeef2));font-size:11.5px;color:rgb(var(--c-3e4a3d))}
+.cp-m span{flex:1}.cp-m em{display:block;font-style:normal;font-size:9.5px;color:rgb(var(--c-a8506a));font-weight:800}
+.cp-add{display:flex;gap:6px;flex-wrap:wrap}.cp-add input{flex:2 1 180px}.cp-add select{flex:1 1 120px}
+.cp-btns{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+.cp-view{margin:0 0 12px;padding:12px 14px;border-radius:18px;background:linear-gradient(135deg,rgb(var(--c-fdeef2)),#fff);border:1.5px solid rgb(var(--c-f4c9d2))}
+.cp-view h4{margin:0 0 6px;font:800 13px 'Playfair Display',serif;color:rgb(var(--c-a8506a))}
+.cp-view dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:11.5px}.cp-view dt{font-weight:800;color:rgb(var(--c-3e4a3d))}.cp-view dd{margin:0;color:rgb(var(--c-3e4a3d));white-space:pre-wrap}
+.cp-view ul{margin:4px 0 0;padding-left:18px;font-size:11.5px}.cp-view li em{font-style:normal;font-size:9.5px;color:rgb(var(--c-a8506a));font-weight:800}
+.cp-view .cp-rt{margin:6px 0 0;font:700 11px Montserrat,sans-serif;color:rgb(var(--c-8f4d62))}
+</style>
+<script type="text/plain" data-app id="b3-js">
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var E = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var LS = function (k, d) { try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } };
+  var SV = function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+  var say = function (body, act) { try { window.__toast({ mode: 'cz', body: body, action: act || null }); } catch (e) {} };
+  var key = function (n) { return String(n || '').toLowerCase().replace(/\s+/g, ''); };
+
+  /* ================= 1. Rating weights (½×, 1×, 2×) ================= */
+  function wmap() { var c = LS('catcfg', {}); return (c && c.w) || {}; }
+  window.catW = function (k) { var w = +wmap()[k]; return w === 0.5 || w === 2 ? w : 1; };
+  window.catWLabel = function (k) { var w = catW(k); return w === 2 ? '2×' : w === 0.5 ? '½×' : '1×'; };
+  window.calcAvgExact = function (o) { var t = 0, ws = 0; Object.keys(o || {}).forEach(function (k) { var v = +o[k]; if (v > 0) { var w = catW(k); t += v * w; ws += w; } }); return ws ? t / ws : 0; };
+  calcAvg = function (o) { var a = calcAvgExact(o); return a ? Math.round(a * 10) / 10 : 0; };   // every average (book rating, modal "Average") is weighted now
+  window.cycleCatW = function (k) {
+    var c = LS('catcfg', {}) || {}; c.w = c.w || {};
+    var w = catW(k), nx = w === 1 ? 2 : w === 2 ? 0.5 : 1;
+    if (nx === 1) delete c.w[k]; else c.w[k] = nx;
+    SV('catcfg', c);
+    var n = 0; books.forEach(function (b) { if (b.ratings && Object.keys(b.ratings).some(function (x) { return b.ratings[x] > 0; })) { var a = calcAvg(b.ratings); if (a > 0 && a !== b.rating) { b.rating = a; n++; } } });
+    saveBooks(); try { renderBooks(); } catch (e) {} try { if (currentTab === 'reviews') renderReviews(); } catch (e) {}
+    try { if (!$('review-modal').classList.contains('hidden')) renderCategoryRatings(); } catch (e) {}
+    var lab = (CATEGORIES.filter(function (x) { return x.key === k; })[0] || { label: k }).label;
+    say('⚖️ ' + lab + ' now counts ' + catWLabel(k) + '. ' + (n ? n + ' book rating' + (n === 1 ? '' : 's') + ' updated.' : 'Your ratings are up to date.'));
+  };
+
+  /* ================= 2. Modal state: tears, characters, ships, journal ================= */
+  var m = { tears: 0, chars: [], ships: {}, journal: [], draftQ: '' };
+  var PROMPTS = ['Write a letter to the main character.', 'Write a letter to the villain (or the most annoying character).', 'Which scene would you reread first, and why?', 'Describe the book to a friend in three sentences, no spoilers.', 'What did this book teach you, or remind you of?', 'If you could step into one scene, which would it be?', 'Write the next chapter in a few lines.', 'Which character are you most like? Which would you befriend?', 'What would you change about the ending?', 'Describe the book as a season, a drink and a song.', 'Write a diary entry as one of the side characters.', 'What line will stay with you? Why that one?', 'How did you feel on the last page?', 'Write a postcard from the book\u2019s world.', 'Which moment made your heart race?', 'What questions are you still asking yourself?', 'Who would you recommend this to, and what would you tell them?', 'Rewrite one scene from another character\u2019s point of view.', 'What surprised you the most?', 'Where were you in life while reading this? How did that colour it?', 'Write a thank-you note to the author.', 'Describe your favourite ship in five words.', 'If this book had a smell, what would it be?', 'Write a fake one-star and a five-star review, just for fun.', 'Which promise or secret in the book matters most?', 'What would the main character think of you?', 'Plan a cosy day inspired by this book.', 'List three things you want to remember about this read.', 'Pick a side character and imagine their happy ending.', 'What theory did you have that was totally wrong?', 'Write a short poem about the world of this book.', 'Which place in the book would you visit, and what would you do there?', 'What did you need from this book, and did you get it?', 'Write a text message the two leads would send each other.', 'Which chapter title (or a made-up one) sums up the book?', 'What would you ask the author over tea?', 'If the book were a film, which scene is the trailer opener?', 'Write about the moment you knew you loved (or didn\u2019t love) this book.', 'What would you whisper to yourself before starting it again?', 'Finish this sentence: \u201cThis book felt like\u2026\u201d'];
+  var cur = function () { return typeof activeReviewIndex === 'number' ? books[activeReviewIndex] : null; };
+  function famNames(b) { return ((b && b.fam && b.fam.p) || []).map(function (p) { return p.n; }).filter(Boolean); }
+  function allCharNames() { var s = {}; books.forEach(function (b) { famNames(b).forEach(function (n) { s[n] = 1; }); (b.charR || []).forEach(function (c) { s[c.n] = 1; }); }); return Object.keys(s).sort(); }
+  function pairs() { var l = []; try { l = (typeof modalPairings !== 'undefined' ? modalPairings : []).slice(); } catch (e) {} Object.keys(m.ships).forEach(function (p) { if (l.indexOf(p) < 0) l.push(p); }); return l; }
+  var SVG_STAR = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z"/></svg>';
+  var SVG_HEART = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 21s-8-5.3-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.7-8 11-8 11z"/></svg>';
+  var stars = function (cls, val, attr, sym) { sym = sym === '♥' ? SVG_HEART : SVG_STAR; var h = '<div class="cr-st' + (cls ? ' ' + cls : '') + '">'; for (var n = 1; n <= 5; n++) h += '<button type="button" class="' + (n <= val ? 'on' : '') + '" ' + attr + ' data-n="' + n + '" aria-label="' + n + ' of 5">' + sym + '</button>'; return h + '</div>'; };
+
+  // --- card 1: hearts & tears (Rate & review, right after the fairy ratings) ---
+  var hx = document.createElement('div'); hx.className = 'rm-card b'; hx.id = 'hx-card';
+  var fr = $('category-ratings') && $('category-ratings').closest('.rm-card');
+  if (fr) fr.after(hx); else if ($('fr-body')) $('fr-body').appendChild(hx);
+  function drawHx() {
+    var b = cur(), sugg = famNames(b).filter(function (n) { return !m.chars.some(function (c) { return key(c.n) === key(n); }); });
+    var drops = ''; for (var i = 0; i < Math.min(m.tears, 30); i++) drops += '<span>😢</span>';
+    var lbl = !m.tears ? 'Dry eyes 🌤️' : m.tears === 1 ? 'One tear' : m.tears < 4 ? m.tears + ' little cries' : m.tears < 8 ? m.tears + ' times, oh no' : m.tears + '× · emotionally destroyed';
+    var ps = pairs();
+    hx.innerHTML = '<div class="rm-ch"><i>💞</i><h5>Hearts &amp; tears</h5><small>tears · characters · ships</small></div>'
+      + '<div class="hx-sec"><div class="hx-h"><b>😢 Tears meter</b><small>how many times it made you cry</small></div><div class="tm-row"><button type="button" class="tm-btn" data-tm="-1" aria-label="One tear less">−</button><div class="tm-drops" aria-live="polite">' + (drops || '<em>no tears… yet</em>') + (m.tears > 30 ? '<em> +' + (m.tears - 30) + '</em>' : '') + '</div><button type="button" class="tm-btn" data-tm="1" aria-label="One more tear">＋</button><span class="tm-lbl">' + E(lbl) + '</span></div></div>'
+      + '<div class="hx-sec"><div class="hx-h"><b>🧚 Character ratings</b><small>score the people, not just the book</small></div>'
+      + (m.chars.length ? m.chars.map(function (c, i) { return '<div class="cr-row"><span class="cr-n" title="' + E(c.n) + '">' + E(c.n) + '</span>' + stars('', c.r || 0, 'data-cr="' + i + '"', '★') + '<input class="cr-note" data-crn="' + i + '" value="' + E(c.note || '') + '" placeholder="Why? A moment, a feeling…" maxlength="160"><button type="button" class="cr-mini" data-cp="' + E(c.n) + '" title="Character profile">📝</button><button type="button" class="cr-mini" data-crx="' + i + '" aria-label="Remove">✕</button></div>'; }).join('') : '<p class="hx-empty">No characters rated yet.</p>')
+      + (sugg.length ? '<div class="cr-sugg">' + sugg.slice(0, 12).map(function (n) { return '<button type="button" data-crs="' + E(n) + '">＋ ' + E(n) + '</button>'; }).join('') + '</div>' : '')
+      + '<div class="cr-add"><input id="cr-new" list="cr-dl" placeholder="Add a character to rate…" maxlength="60"><datalist id="cr-dl">' + allCharNames().map(function (n) { return '<option value="' + E(n) + '">'; }).join('') + '</datalist><button type="button" data-cra="1">＋ Rate</button></div></div>'
+      + '<div class="hx-sec"><div class="hx-h"><b>💞 Ship chemistry</b><small>' + (ps.length ? 'tap the hearts for each pairing' : 'add pairings in 🌸 Basics and they appear here') + '</small></div>'
+      + ps.map(function (p) { return '<div class="cr-row"><span class="cr-n" title="' + E(p) + '">' + E(p) + '</span>' + stars('h', m.ships[p] || 0, 'data-sh="' + E(p) + '"', '♥') + '</div>'; }).join('') + '</div>';
+  }
+  hx.addEventListener('click', function (e) {
+    var t = e.target.closest('button'); if (!t) return;
+    if (t.dataset.tm) { m.tears = Math.max(0, Math.min(99, m.tears + (+t.dataset.tm))); }
+    else if (t.dataset.cr != null) { var c = m.chars[+t.dataset.cr], n = +t.dataset.n; c.r = c.r === n ? 0 : n; }
+    else if (t.dataset.sh != null) { var p = t.dataset.sh, v = +t.dataset.n; if (m.ships[p] === v) delete m.ships[p]; else m.ships[p] = v; }
+    else if (t.dataset.crx != null) { m.chars.splice(+t.dataset.crx, 1); }
+    else if (t.dataset.crs) { m.chars.push({ n: t.dataset.crs, r: 0 }); }
+    else if (t.dataset.cra) { var nm = ($('cr-new').value || '').trim().slice(0, 60); if (!nm) return; if (!m.chars.some(function (c) { return key(c.n) === key(nm); })) m.chars.push({ n: nm, r: 0 }); }
+    else if (t.dataset.cp) { openProfile(t.dataset.cp); return; }
+    else return;
+    drawHx(); dots();
+  });
+  hx.addEventListener('input', function (e) { var i = e.target.dataset && e.target.dataset.crn; if (i != null && m.chars[+i]) m.chars[+i].note = e.target.value; });
+  hx.addEventListener('keydown', function (e) { if (e.target.id === 'cr-new' && e.key === 'Enter') { e.preventDefault(); var b = hx.querySelector('[data-cra]'); if (b) b.click(); } });
+
+  // --- card 2: book journal (end of Extras) ---
+  var jn = document.createElement('div'); jn.className = 'rm-card p'; jn.id = 'jn-card';
+  if ($('rm-extras')) $('rm-extras').appendChild(jn);
+  var jEdit = null;
+  function drawJn() {
+    jn.innerHTML = '<div class="rm-ch"><i>📓</i><h5>Book journal</h5><small>prompts beyond the review</small></div>'
+      + '<div class="jn-prompt"><div class="jn-q" id="jn-q">' + (m.draftQ ? E(m.draftQ) : 'Tap 🎲 for a journaling prompt, or just write freely ✨') + '</div><button type="button" class="jn-btn" data-jn="roll">🎲 Give me a prompt</button></div>'
+      + '<textarea class="jn-ta" id="jn-ta" placeholder="Dear main character…" maxlength="8000"></textarea>'
+      + '<div class="jn-acts">' + (jEdit ? '<button type="button" class="jn-alt" data-jn="cancel">Cancel</button>' : '') + '<button type="button" class="jn-btn" data-jn="save">' + (jEdit ? '💾 Update entry' : '💾 Add entry') + '</button></div>'
+      + '<div class="jn-list">' + m.journal.slice().reverse().map(function (j) { return '<div class="jn-e"><small>📅 ' + E(typeof fmtKey === 'function' ? fmtKey(j.at) : j.at) + '</small>' + (j.p ? '<i>“' + E(j.p) + '”</i>' : '') + '<p>' + E(j.t) + '</p><div class="jn-x"><button type="button" class="cr-mini" data-jne="' + E(j.id) + '" aria-label="Edit">✎</button><button type="button" class="cr-mini" data-jnd="' + E(j.id) + '" aria-label="Delete">✕</button></div></div>'; }).join('') + '</div>';
+  }
+  jn.addEventListener('click', function (e) {
+    var t = e.target.closest('button'); if (!t) return; var ta = $('jn-ta');
+    if (t.dataset.jn === 'roll') { var q; do { q = PROMPTS[Math.floor(Math.random() * PROMPTS.length)]; } while (q === m.draftQ && PROMPTS.length > 1); m.draftQ = q; $('jn-q').textContent = q; return; }
+    if (t.dataset.jn === 'save') {
+      var txt = (ta.value || '').trim(); if (!txt) { ta.focus(); return; }
+      if (jEdit) { var j = m.journal.filter(function (x) { return x.id === jEdit; })[0]; if (j) { j.t = txt; j.p = m.draftQ || j.p; } jEdit = null; }
+      else m.journal.push({ id: 'j' + Date.now().toString(36), p: m.draftQ || undefined, t: txt, at: todayKey() });
+      m.draftQ = ''; drawJn(); dots(); return;
+    }
+    if (t.dataset.jn === 'cancel') { jEdit = null; m.draftQ = ''; drawJn(); return; }
+    if (t.dataset.jne) { var e2 = m.journal.filter(function (x) { return x.id === t.dataset.jne; })[0]; if (!e2) return; jEdit = e2.id; m.draftQ = e2.p || ''; drawJn(); $('jn-ta').value = e2.t; $('jn-ta').focus(); return; }
+    if (t.dataset.jnd) { m.journal = m.journal.filter(function (x) { return x.id !== t.dataset.jnd; }); if (jEdit === t.dataset.jnd) jEdit = null; drawJn(); }
+  });
+
+  // pink "something here" dots on the tabs (only ever added, never removed)
+  function dots() {
+    var tabs = document.querySelector('#rm-tabs') || document; 
+    if (m.tears || m.chars.some(function (c) { return c.r || c.note; }) || Object.keys(m.ships).length) { var r = tabs.querySelector('[data-t="review"]'); if (r) r.classList.add('dot'); }
+    if (m.journal.length) { var x = tabs.querySelector('[data-t="extras"]'); if (x) x.classList.add('dot'); }
+  }
+  var mc = $('review-modal') && $('review-modal').querySelector('.card');
+  if (mc) { mc.addEventListener('input', function () { setTimeout(dots, 0); }); mc.addEventListener('click', function (e) { setTimeout(dots, 0); if (e.target.closest && e.target.closest('[data-t="review"]')) setTimeout(drawHx, 0); }); }
+
+  Hooks.on('openReviewModal', {
+    after: function (a) {
+      var b = books[a[0]]; if (!b) return;
+      m.tears = +b.tears || 0;
+      m.chars = (b.charR || []).map(function (c) { return { n: c.n, r: c.r || 0, note: c.note || '' }; });
+      m.ships = Object.assign({}, b.shipR || {});
+      m.journal = (b.journal || []).map(function (j) { return Object.assign({}, j); });
+      m.draftQ = ''; jEdit = null;
+      drawHx(); drawJn(); setTimeout(dots, 80);
+    }
+  });
+  Hooks.on('saveReview', {
+    before: function (a, c) {
+      var b = cur(); c.b = b; if (!b) return;
+      c.snap = { tears: b.tears, charR: b.charR, shipR: b.shipR, journal: b.journal };
+      var pend = ($('jn-ta') && $('jn-ta').value || '').trim();   // a half-written entry is kept, not lost
+      if (pend) { if (jEdit) { var j = m.journal.filter(function (x) { return x.id === jEdit; })[0]; if (j) j.t = pend; } else m.journal.push({ id: 'j' + Date.now().toString(36), p: m.draftQ || undefined, t: pend, at: todayKey() }); }
+      b.tears = m.tears || undefined;
+      var cr = m.chars.filter(function (x) { return x.r || (x.note || '').trim(); }).map(function (x) { return { n: x.n, r: x.r || 0, note: (x.note || '').trim() || undefined }; });
+      b.charR = cr.length ? cr : undefined;
+      var ps = pairs(), sh = {}; Object.keys(m.ships).forEach(function (p) { if (ps.indexOf(p) >= 0 && m.ships[p] > 0) sh[p] = m.ships[p]; });
+      b.shipR = Object.keys(sh).length ? sh : undefined;
+      b.journal = m.journal.length ? m.journal.map(function (j) { return { id: j.id, p: j.p, t: j.t, at: j.at }; }) : undefined;
+    },
+    after: function (a, c) { if (c.b && c.snap && !$('review-modal').classList.contains('hidden')) Object.assign(c.b, c.snap); }   // the save was rejected: undo
+  });
+
+  /* ================= 3. Character profiles (shared across books) ================= */
+  var PK = 'enchantedCharProfiles';
+  var profs = function () { var p = LS(PK, {}); return p && typeof p === 'object' ? p : {}; };
+  window.charProfile = function (n) { return profs()[key(n)] || null; };
+  function charRatings(n) { var out = []; books.forEach(function (b) { (b.charR || []).forEach(function (c) { if (key(c.n) === key(n) && c.r) out.push({ b: b, r: c.r, note: c.note }); }); }); return out; }
+  function openProfile(n) {
+    var P = profs(), k = key(n), p = Object.assign({ n: n, look: '', persona: '', moments: [] }, P[k] || {}), mo = (p.moments || []).slice();
+    var titles = books.filter(function (b) { return famNames(b).some(function (x) { return key(x) === k; }) || (b.charR || []).some(function (c) { return key(c.n) === k; }); }).map(function (b) { return b.title; });
+    var b0 = cur(); if (b0 && titles.indexOf(b0.title) < 0) titles.unshift(b0.title);
+    var ov = document.createElement('div'); ov.className = 'cp-ov';
+    var draw = function () {
+      ov.innerHTML = '<div class="cp-card" role="dialog" aria-modal="true" aria-label="Character profile"><h3>🧚 ' + E(p.n) + '</h3><p>A little profile that follows this character into every book.</p>'
+        + '<label class="cp-f"><b>👗 Appearance</b><textarea id="cp-look" rows="3" maxlength="1200" placeholder="Hair, eyes, style, the vibe they give off…">' + E(p.look) + '</textarea></label>'
+        + '<label class="cp-f"><b>💫 Personality</b><textarea id="cp-per" rows="3" maxlength="1200" placeholder="Soft, stubborn, chaotic good…">' + E(p.persona) + '</textarea></label>'
+        + '<div class="cp-f"><b>🌟 Favourite moments</b><div class="cp-mo">' + (mo.length ? mo.map(function (x, i) { return '<div class="cp-m"><span>' + E(x.t) + (x.book ? '<em>📖 ' + E(x.book) + '</em>' : '') + '</span><button type="button" class="cr-mini" data-mx="' + i + '" aria-label="Remove">✕</button></div>'; }).join('') : '<p class="hx-empty">No moments saved yet.</p>') + '</div>'
+        + '<div class="cp-add"><input id="cp-mt" maxlength="300" placeholder="That scene where…"><select id="cp-mb"><option value="">(no book)</option>' + titles.map(function (t, i) { return '<option' + (i === 0 ? ' selected' : '') + '>' + E(t) + '</option>'; }).join('') + '</select><button type="button" class="jn-btn" data-ma="1">＋ Add</button></div></div>'
+        + '<div class="cp-btns"><button type="button" class="jn-alt" data-cpx="1">Cancel</button><button type="button" class="jn-btn" data-cps="1">💾 Save profile</button></div></div>';
+    };
+    var keep = function () { var l = ov.querySelector('#cp-look'), q = ov.querySelector('#cp-per'); if (l) p.look = l.value; if (q) p.persona = q.value; };
+    var close = function () { ov.remove(); document.removeEventListener('keydown', esc, true); };
+    var esc = function (e) { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
+    ov.addEventListener('click', function (e) {
+      if (e.target === ov) { close(); return; }
+      var t = e.target.closest('button'); if (!t) return;
+      if (t.dataset.mx != null) { keep(); mo.splice(+t.dataset.mx, 1); draw(); }
+      else if (t.dataset.ma) { var tx = ov.querySelector('#cp-mt').value.trim(); if (!tx) return; keep(); mo.push({ t: tx.slice(0, 300), book: ov.querySelector('#cp-mb').value || undefined }); draw(); }
+      else if (t.dataset.cpx) close();
+      else if (t.dataset.cps) {
+        keep(); var P2 = profs(), rec = { n: p.n, look: p.look.trim(), persona: p.persona.trim(), moments: mo };
+        if (rec.look || rec.persona || mo.length) P2[k] = rec; else delete P2[k];
+        SV(PK, P2); close(); say('🧚 ' + p.n + '’s profile is saved.');
+        try { if ($('cx-modal') && $('cx-modal').offsetParent !== null && $('cx-modal').dataset.n === p.n) window.charPage(p.n); } catch (x) {}
+      }
+    });
+    draw(); document.body.appendChild(ov); document.addEventListener('keydown', esc, true);
+    setTimeout(function () { var l = ov.querySelector('#cp-look'); if (l) l.focus(); }, 30);
+  }
+  window.openCharProfile = openProfile;
+  if (typeof window.charPage === 'function') {
+    var _cp = window.charPage;
+    window.charPage = function (name) {
+      var r = _cp.apply(this, arguments);
+      try {
+        var host = $('cx-b'); if (!host) return r;
+        var cxm = $('cx-modal'); if (cxm) cxm.dataset.n = name;
+        var p = charProfile(name), rs = charRatings(name), avg = rs.length ? rs.reduce(function (t, x) { return t + x.r; }, 0) / rs.length : 0;
+        var html = '<div class="cp-view" id="cp-view"><h4>🧚 Profile</h4>'
+          + (p && (p.look || p.persona) ? '<dl>' + (p.look ? '<dt>👗 Look</dt><dd>' + E(p.look) + '</dd>' : '') + (p.persona ? '<dt>💫 Personality</dt><dd>' + E(p.persona) + '</dd>' : '') + '</dl>' : '')
+          + (p && p.moments && p.moments.length ? '<b style="display:block;margin-top:6px;font:800 11px Montserrat,sans-serif">🌟 Favourite moments</b><ul>' + p.moments.map(function (x) { return '<li>' + E(x.t) + (x.book ? ' <em>📖 ' + E(x.book) + '</em>' : '') + '</li>'; }).join('') + '</ul>' : '')
+          + (avg ? '<p class="cp-rt">⭐ Your rating: ' + (Math.round(avg * 10) / 10) + ' / 5 over ' + rs.length + ' book' + (rs.length === 1 ? '' : 's') + '</p>' : '')
+          + (!p && !avg ? '<p class="hx-empty">No profile yet. Add their look, personality and favourite moments.</p>' : '')
+          + '<button type="button" class="jn-btn" style="margin-top:8px" data-cpo="' + E(name) + '">' + (p ? '✎ Edit profile' : '＋ Create profile') + '</button></div>';
+        var old = $('cp-view'); if (old) old.remove();
+        host.insertAdjacentHTML('afterbegin', html);
+      } catch (e) { console.error(e); }
+      return r;
+    };
+    document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('[data-cpo]'); if (b) openProfile(b.dataset.cpo); });
+  }
+
+  /* ================= 4. Tears on finished cards ================= */
+  if (typeof window.renderReviews === 'function') {
+    var _rr = window.renderReviews;
+    window.renderReviews = function () {
+      var r = _rr.apply(this, arguments);
+      try {
+        document.querySelectorAll('#reviews-list > div').forEach(function (c) {
+          if (c.querySelector('.tm-chip')) return;
+          var bt = c.querySelector('button[onclick^="toggleReviewCard("]'), b = bt ? books[bookIxFrom(bt.getAttribute('onclick'))] : null;
+          if (!b || !b.tears) return;
+          var meta = c.querySelector('.fsx-meta'), chip = '<span class="tm-chip" title="Made you cry ' + b.tears + '×">😢×' + b.tears + '</span>';
+          if (meta) meta.insertAdjacentHTML('beforeend', chip); else { var rd = c.querySelector('.fsx-r'); if (rd) rd.insertAdjacentHTML('afterend', '<div class="fsx-meta">' + chip + '</div>'); }
+        });
+      } catch (e) {}
+      return r;
+    };
+  }
 })();
 </script>
 <style id="fin-covers-stars-css">
