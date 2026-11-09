@@ -7235,10 +7235,20 @@ renderBackupNudge(); renderRes();
         pop.setAttribute('aria-label', c.cfg.label);
 
         let head, body;
-        if (c.view === 'months') {
+        if (c.view === 'years') {   // twelve years at a time, so a birthday is a few taps away
+            const y0 = c.y - ((c.y % 12) + 12) % 12, thisY = new Date().getFullYear();
+            head = `<div class="cal-head">
+                <button type="button" class="cal-nav" data-act="y12prev" aria-label="Earlier years">‹</button>
+                <button type="button" class="cal-title" data-act="months" aria-label="Back to months">${y0} – ${y0 + 11}<small>pick a year</small></button>
+                <button type="button" class="cal-nav" data-act="y12next" aria-label="Later years">›</button></div>`;
+            body = `<div class="cal-months cal-body">${Array.from({ length: 12 }, (_, i) => y0 + i).map(y => {
+                const cls = (sel && sel.getFullYear() === y ? ' sel' : '') + (y === thisY ? ' cur' : ''), dis = c.cfg.maxToday && y > thisY;
+                return `<button type="button" class="cal-mon${cls}" data-yr="${y}" ${dis ? 'disabled' : ''}>${y}</button>`;
+            }).join('')}</div>`;
+        } else if (c.view === 'months') {
             head = `<div class="cal-head">
                 <button type="button" class="cal-nav" data-act="yprev" aria-label="Previous year">‹</button>
-                <button type="button" class="cal-title" data-act="days" aria-label="Back to days">${c.y}<small>pick a month</small></button>
+                <button type="button" class="cal-title" data-act="years" aria-label="Choose a year">${c.y}<small>pick a month · tap for years</small></button>
                 <button type="button" class="cal-nav" data-act="ynext" aria-label="Next year">›</button></div>`;
             const now = new Date();
             body = `<div class="cal-months cal-body">${MONTHS.map((n, i) => {
@@ -7261,7 +7271,7 @@ renderBackupNudge(); renderRes();
                 if (val && k === val) cls.push('sel');
                 if (startV && val && k > startV && k < val) cls.push('path');
                 if (startV && k === startV && c.cfg.range && val) cls.push('startmark');
-                const dis = min && k < min;
+                const dis = (min && k < min) || (c.cfg.maxToday && k > today);
                 cells.push(`<button type="button" class="${cls.join(' ')}" data-d="${k}" ${dis ? 'disabled' : ''} aria-label="${d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}${rest.has(d.getDay()) ? ' (rest day)' : ''}" ${k === val ? 'aria-pressed="true"' : ''}>${d.getDate()}</button>`);
                 if (i >= 34 && (i + 1) % 7 === 0 && new Date(c.y, c.m, 1 - lead + i + 1).getMonth() !== c.m) break;   // drop a fully-empty last week
             }
@@ -7284,8 +7294,8 @@ renderBackupNudge(); renderRes();
 
     function open(input, trigger, cfg) {
         if (cur && cur.input === input) { close(); return; }
-        const d = parse(input.value) || new Date();
-        cur = { input, trigger, cfg, view: 'days', y: d.getFullYear(), m: d.getMonth() };
+        const pv = parse(input.value), d = pv || (cfg.startYear ? new Date(cfg.startYear, 0, 1) : new Date());
+        cur = { input, trigger, cfg, view: pv ? 'days' : (cfg.startView || 'days'), y: d.getFullYear(), m: d.getMonth() };
         trigger.setAttribute('aria-expanded', 'true');
         pop.hidden = false; render(); place();
         const f = pop.querySelector('.cal-day.sel') || pop.querySelector('.cal-day.today') || pop.querySelector('.cal-day:not(:disabled)');
@@ -7303,12 +7313,16 @@ renderBackupNudge(); renderRes();
         const c = cur;
         if (b.dataset.d) { setValue(c.input, b.dataset.d); close(true); return; }
         if (b.dataset.mon != null) { c.m = +b.dataset.mon; c.view = 'days'; render(); place(); return; }
+        if (b.dataset.yr != null) { c.y = +b.dataset.yr; c.view = 'months'; render(); place(); return; }
         const act = b.dataset.act;
         if (act === 'prev') { c.m--; if (c.m < 0) { c.m = 11; c.y--; } }
         else if (act === 'next') { c.m++; if (c.m > 11) { c.m = 0; c.y++; } }
         else if (act === 'yprev') c.y--;
         else if (act === 'ynext') c.y++;
         else if (act === 'months') c.view = 'months';
+        else if (act === 'years') c.view = 'years';
+        else if (act === 'y12prev') c.y -= 12;
+        else if (act === 'y12next') c.y += 12;
         else if (act === 'days') c.view = 'days';
         else if (act === 'today') { const min = minValue(c), t = dkey(new Date()); if (!min || t >= min) { setValue(c.input, t); close(true); } else { c.y = new Date().getFullYear(); c.m = new Date().getMonth(); c.view = 'days'; } }
         else if (act === 'clear') { setValue(c.input, ''); close(true); return; }
@@ -7344,8 +7358,9 @@ renderBackupNudge(); renderRes();
         const refresh = () => {
             const v = input.value;
             trigger.classList.toggle('empty', !v);
-            trigger.querySelector('.cal-txt').textContent = v ? pretty(v) : cfg.empty;
-            trigger.setAttribute('aria-label', cfg.label + (v ? ': ' + pretty(v) : ': not set'));
+            const shown = v ? (cfg.fmt ? cfg.fmt(v) : pretty(v)) : cfg.empty;
+            trigger.querySelector('.cal-txt').textContent = shown;
+            trigger.setAttribute('aria-label', cfg.label + (v ? ': ' + shown : ': not set'));
         };
         // keep the label in sync when the existing code sets input.value directly (defaults, "clear target", ...)
         const desc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
@@ -11211,6 +11226,7 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
   var hookFilters = function () { var box = $q('#bl-filters'); if (!box) return null; var was = box.style.display === 'none'; if (was) { try { toggleBlFilters(); } catch (e) { return null; } } return function () { if (was && box.style.display !== 'none') { try { toggleBlFilters(); } catch (e) {} } }; };
   var btnIn = function (re) { return function () { var m = $q('#review-modal'); return m && [].slice.call(m.querySelectorAll('button')).filter(function (x) { return re.test(x.textContent); })[0]; }; };
   var year = function (k) { return function () { try { yrGo(k); } catch (e) {} return null; }; };
+  var csOpen = function () { var sec = $q('#fcx-y-soon'); if (sec && !sec.classList.contains('open')) { var h = sec.querySelector('.fcx-yh'); if (h) h.click(); } return null; };
   var ltp = function (k) { return function () { try { ltGo(k); } catch (e) {} return null; }; };
   var yearTabs = function () { var b = $q('#tab-content-year button[onclick^="yrGo("]'); return b && b.parentElement; };
 
@@ -11229,12 +11245,12 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
     [null, null, `Explicit content 🔞`, 'Welcome', `<p>Some tags, warnings and kinks are for <b>grown-ups only</b> (explicit and 18+). You can keep them out of sight so your garden stays cozy and safe.</p><p>Nothing is deleted: safe mode only hides them, and you can switch it any time in <b>⚙️ settings</b>.</p>`, 'safe'],
     [['#levi-buddy'], null, `Meet chibi Levi 🧍`, 'Welcome', `<p>A tiny chibi Levi can keep you company in the bottom-right corner while you read and plan. He is purely decorative: he never blocks clicks and he does not get in the way of anything.</p>`, 'levi'],
     [['#col-left'], 'backlog', `Your home panel 🌿`, 'Essentials', `<p>The left column is your <b>dashboard</b> and updates live as you read:</p><ul><li>🌷 <b>Progress Garden</b> – one flower per finished book, and the <b>goal ring</b> for today's minutes</li><li>📌 <b>Next up</b>, 🔥 <b>Reading streak</b>, 🎀 <b>Quest Board</b> (stars grow Pip and buy 🛍️ garden decorations; there are 🤫 secret quests too), 🎲 <b>Reading dare</b>, 🎡 <b>TBR Roulette</b>, 🔮 <b>Whisper me some recs</b>, 🎃 <b>Seasonal events</b>, ✨ <b>Fairy Whisper</b> and 📖 <b>Word of the day</b></li><li>💾 <b>Back up</b>, <b>Restore</b> and <b>Reset</b> at the bottom</li></ul><p>The <b>❓ Quick tour</b> at the top of this panel walks through every card.</p>`],
-    [tabs, null, `Tabs and docks 🧭`, 'Essentials', `<ul><li>The tab bar along the top: 📜 <b>TBR</b> (books to read), 🗓️ <b>Weekly Path</b> (your schedule), ✨ <b>Finished</b> (reviews and ratings), 📚 <b>Library</b> (every unread book you own), 🔮 <b>Future Chapters</b>, 📖 <b>Reading Now</b>, 📊 <b>Year in Review</b>, 🌙 <b>Monthly Recap</b>, 🕰️ <b>Sessions</b>, 🪦 <b>Graveyard</b> and 💖 <b>Favorites</b>. Scroll it sideways if it does not all fit; the numbers count the books in each. It stays pinned at the top while you scroll.</li><li>The <b>docks</b> on the screen edges hold shortcuts (hover an icon for its name). <b>Right:</b> 🕰️ Sessions, 💖 Favorites, 🎵 Book Soundtrack, 🏆 All-Time Bracket, 📚 Bookshelf, ❝ Quotes, 🗓️ Coming Soon (release countdowns), 📕 Book Passport. <b>Left:</b> 🔮 Future Chapters, 📊 Year in Review, 🌙 Monthly Recap, 📚 Series Tracker, 🪦 Graveyard, 🧹 Tidy duplicates.</li><li>↶ ↷ at the top right <b>undo and redo</b> your changes (Ctrl/⌘ + Z).</li></ul><p>Every tab and dock page has its own <b>❓ Quick tour</b>.</p>`],
+    [tabs, null, `Tabs and docks 🧭`, 'Essentials', `<ul><li>The tab bar along the top: 📜 <b>TBR</b> (books to read), 🗓️ <b>Weekly Path</b> (your schedule), ✨ <b>Finished</b> (reviews and ratings), 📚 <b>Library</b> (every unread book you own), 🔮 <b>Future Chapters</b>, 📖 <b>Reading Now</b>, 📊 <b>Year in Review</b>, 🌙 <b>Monthly Recap</b>, 🕰️ <b>Sessions</b>, 🪦 <b>Graveyard</b> and 💖 <b>Favorites</b>. Scroll it sideways if it does not all fit; the numbers count the books in each. It stays pinned at the top while you scroll.</li><li>The <b>docks</b> on the screen edges hold shortcuts (hover an icon for its name). <b>Right:</b> 🕰️ Sessions, 💖 Favorites, 🎵 Book Soundtrack, 🏆 All-Time Bracket, 📚 Bookshelf, ❝ Quotes, 📕 Book Passport. <b>Left:</b> 🔮 Future Chapters, 📊 Year in Review, 🌙 Monthly Recap, 📚 Series Tracker, 🪦 Graveyard, 🧹 Tidy duplicates.</li><li>↶ ↷ at the top right <b>undo and redo</b> your changes (Ctrl/⌘ + Z).</li></ul><p>Every tab and dock page has its own <b>❓ Quick tour</b>.</p>`],
     [[up('#new-title', 1)], 'backlog', `Add a book: Plant 🌱`, 'Essentials', `<p>Type a title, enter how long it takes to read, then press <b>🌱 Plant</b>. The time powers your schedule, so a rough guess is fine.</p><ul><li><b>Tap a cover</b> in Covers view to open the book's edit panel</li><li>The whole TBR page scrolls, so the header slides away and your books get the room</li><li>🔮 <b>Scroll Sorcery</b> (Bulk add, Shuffle, From graveyard), 🪄 <b>Quick Enchant</b>, 🎀 <b>Filters</b>, search, the month pages and the List / Grid / Covers views are all in the TBR's <b>❓ Quick tour</b></li></ul>`],
     [[box('#review-modal')], null, `Edit and review a book ✎`, 'Essentials', `<p>Open any book with <b>✎ / Edit details</b>, or by tapping its cover in the TBR's Covers view.</p><ul><li>🌸 <b>Basics</b>: cover, title, authors, pages, fandoms, pairings, link and dates</li>{{AO3}}<li>🏷️ <b>Tags &amp; series</b>: tags, warnings and vibes</li><li>✍️ <b>Rate &amp; review</b>: <b>fairy ratings</b> (tap a dot, 1 to 5, per category), 😢 tears, character and ship ratings, thoughts, feelings and mood, highlights</li><li>🎵 <b>Extras</b>: scenes, theories, best / weakest, quotes, songs, the 🌳 family tree and a 📓 book journal with prompts</li></ul><p>The <b>❓ Quick tour</b> in this window's header explains every tab.</p>`, null, hookReview(false, false)],
     [[up('#start-date', 3)], 'schedule', `Plan your reading 🗓️`, 'Essentials', `<p>Tell the app <b>when you start</b> and either a <b>target date</b> or your <b>daily minutes</b>, then press <b>Weave</b>. It builds a day-by-day trail from your backlog, with optional rest days and different minutes for each weekday.</p><p>📌 <b>Lock a book to a week</b> for a book club or event, and add 🏖️ <b>vacation days</b> that the plan skips without breaking your streak.</p>`],
     [['.lb-hero', '#tab-btn-lib'], 'lib', `Your Library 📚`, 'Essentials', `<p><b>📚 Library</b> holds every unread book you own. Only the ones you put <b>in your plan</b> show up in the TBR and the Weekly Path; the rest wait here until you are ready.</p><p>Search, filter, and <b>☑ Select multiple</b> → <b>🌷 Program selected</b> to drop many books into your plan at once (next up, at the end, or spread evenly).</p>`],
-    [['#tab-btn-future', '.dock-btn[data-tab="future"]'], null, `Future Chapters 🔮`, 'Essentials', `<p>The <b>🔮 Future Chapters</b> tab (also at the top of the left dock) shows every book in your plan laid out <b>year by year and month by month</b>, with its cover and the day you will finish it. Perfect for plans that run over several years.</p>`],
+    [['#tab-btn-future', '.dock-btn[data-tab="future"]'], null, `Future Chapters 🔮`, 'Essentials', `<p>The <b>🔮 Future Chapters</b> tab (also at the top of the left dock) shows every book in your plan laid out <b>year by year and month by month</b>, with its cover and the day you will finish it. Perfect for plans that run over several years. At the top, a foldable 🗓️ <b>Upcoming releases</b> card counts down to the books you are waiting for.</p>`],
     [['#now-content', '#tab-content-now'], 'now', `Read and log 📖`, 'Essentials', `<p>Every book you are reading gets a card: <b>log minutes and pages</b>, add a 🔖 bookmark, 📝 page notes, first impressions and theories. Logging feeds your goal ring, streak and stats.</p><p>When you finish, the review window opens so you can give it <b>fairy ratings</b> straight away; the book moves to <b>✨ Finished</b>, and <b>📊 Year in Review</b> turns it all into stats. Want a focus sprint? The 🌷 <b>Story Spell</b> timer lives in 🕰️ Sessions.</p><p>Started a book you planned for later? <b>🌙 Save for later</b> keeps its progress and place in your plan but takes it off Reading Now, and ⚙️ Settings has a gentle <b>reading limit</b>.</p>`],
     [['#st-hero', '#tab-content-settings'], 'settings', `Settings ⚙️`, 'Essentials', `<p>The <b>⚙️</b> (top-right) opens Settings: one cozy page of cards for theme, text size, safe mode, 🔒 <b>PIN lock</b>, 🎃 seasonal events, AO3 import, chibi Levi, the <b>🏷️ tag manager</b>, rating categories, cover storage, CSV imports and <b>backups</b>. The pills under the pink header jump straight to a card, and the chips show your theme and when you last backed up. Download a backup now and then, because your library only lives in this browser.</p><p>Under <b>🧭 Help &amp; tours</b> you can <b>hide the ❓ Quick tour buttons</b> once you know the app, or replay this tour.</p>`],
     [['#ui-gear'], 'backlog', `You're all set! 🎉`, 'Done', `<p>Start by planting your first book in the TBR. Look for the small <b>❓ Quick tour</b> at the top of any tab whenever you want the details, and hide those buttons (or replay this full tour) in ⚙️ Settings. Happy reading! 🌿</p>`]
@@ -11302,11 +11318,7 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
     [['#lt-root'], 'lifetime', `Lifetime: Achievements 🏅 (2/2)`, 'Stats', `<p>Medals with tiers: 🥉 Bronze, 🥈 Silver, 🥇 Gold and 💎 Diamond, for books, pages, hours, streaks, reading days, reviews, highlights, 5-star reads, fandoms, authors and rereads. Your top tropes, vibes and fandoms get their own medals too (10, 50, 100… books). Each card shows how far you are from the next tier, and a toast pops up when you earn one (tap <b>See them</b> to jump here).</p>`, null, ltp('ach')],
     ],
     'passport': [
-    [['#ppx-page', '#tab-content-passport'], 'passport', `Book Passport 📕`, 'Just for fun', `<p>A real-looking passport for your reading travels. Press <b>OPEN ▸</b> on the cover.</p><ul><li><b>Identity page</b> – tap 📷 to add your own photo, then fill in your name, birthday, pronouns, hometown, nationality and favourite genre, and sign it. The machine-readable lines at the bottom update as you type</li><li><b>Visa pages</b> – one per fandom, with its own ink stamp (books, first visit and year) and the covers of every book you read there, in a sepia tint (hover to see the colour, tap to open the book)</li><li><b>🧳 Travel log</b> – every realm you have visited</li></ul><p>Use ◀ ▶ (or the arrow keys) and the chips at the top to jump to a fandom.</p>`],
-    ],
-    'soon': [
-    [['#cs-hero', '#tab-content-soon'], 'soon', `Coming Soon 🗓️`, 'Planning', `<p>Books you are waiting for, each with a <b>countdown</b> to release day. The chips count what is on the way, the next release and what is already out. On release day you get a little 🎉 hello.</p>`],
-    [['#cs-form'], 'soon', `Add a release`, 'Planning', `<p>Type the title, author and release date (plus an optional note such as the series, and a link), then <b>🗓️ Add release</b>. ✎ edits a card and 🗑 removes it.</p><p><b>🌱 Add to TBR</b> plants it at the end of your plan, and <b>📚 Library</b> keeps it in your Library. Either way it starts with a 6h reading-time guess you can change.</p>`],
+    [['#ppx-page', '#tab-content-passport'], 'passport', `Book Passport 📕`, 'Just for fun', `<p>A real-looking passport for your reading travels. Press <b>OPEN ▸</b> on the cover.</p><ul><li><b>Identity page</b> – tap 📷 to add your own photo, then fill in your name, birthday (🎂 a little calendar opens on the years, so it is only a few taps), pronouns, hometown, nationality and favourite genre, and sign it. The machine-readable lines at the bottom update as you type</li><li><b>Visa pages</b> – one per fandom, with its own ink stamp (books, first visit and year) and the covers of every book you read there, in a sepia tint (hover to see the colour, tap to open the book)</li><li><b>🧳 Travel log</b> – every realm you have visited</li></ul><p>Use ◀ ▶ (or the arrow keys) to turn the pages, or open the <b>Page ▾</b> menu at the top to jump straight to a fandom or the travel log.</p>`],
     ],
     'edit': [
     [['#rm-tabs'], null, `The review window: four tabs 🗂️`, 'Editing a book', `<p>Open any book with <b>✎</b> or <b>Edit details</b>. The window is split into four tabs along the top, so you only see one part at a time:</p><ul><li>🌸 <b>Basics</b> – the book, fandom &amp; pairing, link, reading journey</li><li>🏷️ <b>Tags &amp; series</b></li><li>✍️ <b>Rate &amp; review</b> – fairy ratings, thoughts, feelings, highlights</li><li>🎵 <b>Extras</b> – go deeper, best / weakest, quotes, songs, family tree</li></ul><p>A little <b>pink dot</b> on a tab means it already holds something for this book.</p>`, null, hookReview('basics')],
@@ -11333,6 +11345,8 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
     'future': [
     [['.fcx-hero', '#tab-content-future'], 'future', `Future Chapters 🔮`, 'Plan', `<p>Every book in your plan, in the order the Weekly Path will finish them. The chips show how many books, how many hours and the day it will all be done.</p>`],
     [['#fcx-jump', '.fcx-hero'], 'future', `Jump to a year`, 'Plan', `<p>Tap a year to jump straight to it. Each year card shows its books, hours and months; tap its header to fold it away (it stays folded next time).</p>`],
+    [['#fcx-y-soon'], 'future', `Upcoming releases 🗓️`, 'Plan', `<p>Books you are waiting for, each with a <b>countdown</b> to release day. The chips count what is on the way, the next release and what is already out, and on release day you get a little 🎉 hello. Tap the header to fold the card away (it stays folded next time).</p>`, null, csOpen],
+    [['#cs-form'], 'future', `Add a release`, 'Plan', `<p>Type the title and author, pick the release date on the 📅 calendar, add an optional note (such as the series) and a link, then <b>🗓️ Add release</b>. ✎ edits a card and 🗑 removes it.</p><p><b>🌱 Add to TBR</b> plants it at the end of your plan, and <b>📚 Library</b> keeps it in your Library. Either way it starts with a 6h reading-time guess you can change.</p>`, null, csOpen],
     [['.fcx-m', '#fcx-body'], 'future', `Month by month 🗓`, 'Plan', `<p>Each month lists the books you will finish in it, with the cover and the 🏁 finish day. 📖 marks a book you already started, ⏸ one on hold and 💖 a favourite. Tap a cover to open it. Books in your plan that the path does not reach yet sit in <b>🌫 Not on the path yet</b> at the end.</p>`],
     ],
     'alltime': [
@@ -11460,7 +11474,7 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
   purgeDemo();   /* clears leftovers if the page was closed in the middle of a tour */
 
   var i = 0, hl, card, blk, open = false, run = MAIN, runKey = 'main', origTab = null, keepDemo = false;
-  var TABKEYS = ['backlog', 'schedule', 'reviews', 'soon', 'passport', 'lib', 'future', 'alltime', 'tagmgr', 'now', 'year', 'lifetime', 'month', 'sessions', 'abandoned', 'favorites', 'quotes', 'soundtrack', 'shelf', 'series', 'settings'];
+  var TABKEYS = ['backlog', 'schedule', 'reviews', 'passport', 'lib', 'future', 'alltime', 'tagmgr', 'now', 'year', 'lifetime', 'month', 'sessions', 'abandoned', 'favorites', 'quotes', 'soundtrack', 'shelf', 'series', 'settings'];
   function curTab() { for (var n = 0; n < TABKEYS.length; n++) { var c = $q('#tab-content-' + TABKEYS[n]); if (c && !c.classList.contains('hidden')) return TABKEYS[n]; } return null; }
   function cur() { return run.filter(function (s) { return s[5] !== 'ao' || ao(); }); }
   function done() { try { localStorage.setItem(KEY, '1'); } catch (e) {} }
@@ -11524,7 +11538,7 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
   function setMini(yes) { try { localStorage.setItem(MK, yes ? 'yes' : 'no'); } catch (e) {} document.body.classList.toggle('no-mini', !yes); }
   window.setMini = setMini;
   document.body.classList.toggle('no-mini', !miniOn());
-  var TABHOSTS = [['home', '#col-left', 'the home panel'], ['lib', '#tab-content-lib', 'the Library'], ['future', '#tab-content-future', 'Future Chapters'], ['alltime', '#tab-content-alltime', 'the All-Time Bracket'], ['book', '#tab-content-book', 'the book page'], ['tagmgr', '#tab-content-tagmgr', 'the Tag manager'], ['backlog', '#tab-content-backlog', 'the TBR'], ['schedule', '#tab-content-schedule', 'the Weekly Path'], ['reviews', '#tab-content-reviews', 'Finished books'], ['now', '#tab-content-now', 'Reading Now'], ['year', '#tab-content-year', 'Year in Review'], ['lifetime', '#tab-content-lifetime', 'Lifetime'], ['month', '#tab-content-month', 'Monthly Recap'], ['sessions', '#tab-content-sessions', 'Sessions'], ['abandoned', '#tab-content-abandoned', 'the Graveyard'], ['favorites', '#tab-content-favorites', 'Favorites'], ['quotes', '#tab-content-quotes', 'Quotes'], ['soundtrack', '#tab-content-soundtrack', 'the Book Soundtrack'], ['soon', '#tab-content-soon', 'Coming Soon'], ['passport', '#tab-content-passport', 'the Book Passport'], ['shelf', '#tab-content-shelf', 'the Bookshelf'], ['series', '#tab-content-series', 'the Series Tracker'], ['settings', '#tab-content-settings', 'Settings']];
+  var TABHOSTS = [['home', '#col-left', 'the home panel'], ['lib', '#tab-content-lib', 'the Library'], ['future', '#tab-content-future', 'Future Chapters'], ['alltime', '#tab-content-alltime', 'the All-Time Bracket'], ['book', '#tab-content-book', 'the book page'], ['tagmgr', '#tab-content-tagmgr', 'the Tag manager'], ['backlog', '#tab-content-backlog', 'the TBR'], ['schedule', '#tab-content-schedule', 'the Weekly Path'], ['reviews', '#tab-content-reviews', 'Finished books'], ['now', '#tab-content-now', 'Reading Now'], ['year', '#tab-content-year', 'Year in Review'], ['lifetime', '#tab-content-lifetime', 'Lifetime'], ['month', '#tab-content-month', 'Monthly Recap'], ['sessions', '#tab-content-sessions', 'Sessions'], ['abandoned', '#tab-content-abandoned', 'the Graveyard'], ['favorites', '#tab-content-favorites', 'Favorites'], ['quotes', '#tab-content-quotes', 'Quotes'], ['soundtrack', '#tab-content-soundtrack', 'the Book Soundtrack'], ['passport', '#tab-content-passport', 'the Book Passport'], ['shelf', '#tab-content-shelf', 'the Bookshelf'], ['series', '#tab-content-series', 'the Series Tracker'], ['settings', '#tab-content-settings', 'Settings']];
   var HEADHOSTS = [['edit', function () { var t = $q('#modal-book-title'); return t && t.parentElement; }, 'the edit window'], ['dups', function () { return $q('#dup-modal .dup-head'); }, 'Tidy duplicates']];
   function mkMini(k, label, inl) { var b = document.createElement('button'); b.type = 'button'; b.className = 'tourx-mini' + (inl ? ' inl' : ''); b.dataset.k = k; b.textContent = '❓ Quick tour'; b.title = 'Quick tour of ' + label; b.setAttribute('aria-label', 'Quick tour of ' + label); return b; }
   function placeMinis() {
@@ -16566,6 +16580,14 @@ p.wpx-title{display:flex!important;align-items:center;gap:12px;margin:0 0 12px!i
 .cs-empty{text-align:center;padding:24px 10px;font:italic 600 12.5px 'Playfair Display',serif;color:rgb(var(--c-6b705c))}
 .cs-sec{margin:4px 0 8px;font:800 10px Montserrat,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:rgb(var(--c-a8506a))}
 @media(prefers-reduced-motion:reduce){.cs-badge span{animation:none}}
+.fcx-soon .fcx-yn{font-size:21px;color:rgb(var(--c-a8506a))}
+.fcx-soon .fcx-yb{padding:10px 14px 16px}
+.fcx-soon .cs-intro{margin:0 0 10px;font:italic 600 11.5px 'Playfair Display',serif;color:rgb(var(--c-6b705c))}
+.fcx-soon .cs-chips{margin:0}
+.fcx-soon .cs-form{background:#fffdfb}
+#cs-date{display:none}
+.cs-form .cal-trigger{min-width:0;border:1.5px solid rgb(var(--c-e8c4c4));border-radius:12px;padding:6px 10px;font:600 11.5px Montserrat,sans-serif;background:#fff}
+@media(max-width:560px){.fcx-soon .fcx-yn{font-size:17px}}
 </style>
 <script type="text/plain" data-app id="b1-js">
 (function () {
@@ -16699,20 +16721,27 @@ p.wpx-title{display:flex!important;align-items:center;gap:12px;margin:0 0 12px!i
   var saveRel = function () { SV(CSK, rel); };
   var todayK = function () { return dateKey(new Date()); };
   var daysTo = function (k) { var a = new Date(k + 'T00:00:00'), b = new Date(new Date().toDateString()); return Math.round((a - b) / 864e5); };
-  var host = $('tab-content-favorites').parentNode;
-  host.insertAdjacentHTML('beforeend', '<div id="tab-content-soon" class="hidden flex-1 flex flex-col">'
-    + '<div class="cs-hero" id="cs-hero"><div class="cs-badge" aria-hidden="true"><span>🗓️</span></div><div class="cs-ht"><b>Coming Soon</b><small>Books you are waiting for, with a countdown to release day 🎀</small><div class="cs-chips" id="cs-chips"></div></div></div>'
+  // lives inside 🔮 Future Chapters as a card you can fold away (it remembers, like the year cards)
+  var csFold = function () { try { return !!(JSON.parse(localStorage.getItem('enchantedFutureClosed')) || {}).soon; } catch (e) { return false; } };
+  var csHTML = '<section class="fcx-year fcx-soon' + (csFold() ? '' : ' open') + '" id="fcx-y-soon" data-y="soon"><button type="button" class="fcx-yh" aria-expanded="' + !csFold() + '"><span class="fcx-yn">🗓️ Upcoming releases</span><span class="fcx-ys cs-chips" id="cs-chips"></span><span class="fcx-yc" aria-hidden="true">▾</span></button>'
+    + '<div class="fcx-yb"><p class="cs-intro">Books you are waiting for, with a countdown to release day 🎀</p>'
     + '<form class="cs-form" id="cs-form" autocomplete="off"><input id="cs-title" placeholder="Book title" aria-label="Book title"><input id="cs-author" placeholder="Author" aria-label="Author"><input id="cs-date" type="date" aria-label="Release date">'
     + '<div class="cs-wide"><input id="cs-note" placeholder="Series, edition or a note (optional)" aria-label="Note"><input id="cs-link" placeholder="Link (optional)" aria-label="Link"><button type="submit" class="cs-go" id="cs-go">🗓️ Add release</button><button type="button" class="cs-cancel" id="cs-cancel" hidden>Cancel</button></div></form>'
-    + '<div id="soon-content"></div></div>');
-  var dock = $('side-dock');
-  if (dock) { var db = document.createElement('button'); db.className = 'dock-btn'; db.dataset.tab = 'soon'; db.title = 'Coming Soon'; db.setAttribute('aria-label', 'Coming Soon'); db.innerHTML = '🗓️<em class="dock-label">Coming Soon</em>'; db.onclick = function () { switchTab('soon'); }; dock.appendChild(db); }
+    + '<div id="soon-content"></div></div></section>';
+  var fcJump = $('fcx-jump');
+  if (fcJump) fcJump.insertAdjacentHTML('beforebegin', csHTML);
+  else $('tab-content-favorites').parentNode.insertAdjacentHTML('beforeend', '<div id="tab-content-soon" class="hidden">' + csHTML + '</div>');
+  if (window.attachCal) attachCal('cs-date', { soft: true, icon: '📅', label: 'Release date', kicker: 'Release date', empty: 'Release date', hint: '🎁 the day it comes out' });
+  window.openUpcoming = function () {
+    var go = function () { var s = $('fcx-y-soon'); if (!s) return; if (!s.classList.contains('open')) s.querySelector('.fcx-yh').click(); s.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+    if (currentTab !== 'future') { switchTab('future'); setTimeout(go, 150); } else go();
+  };
   function csRender() {
     var box = $('soon-content'); if (!box) return;
     var tk = todayK(), list = rel.slice().sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
     var up = list.filter(function (r) { return r.date >= tk; }), out = list.filter(function (r) { return r.date < tk; }).reverse();
     var next = up[0], wk = up.filter(function (r) { return daysTo(r.date) <= 7; }).length, nd = next ? daysTo(next.date) : 0;
-    $('cs-chips').innerHTML = (up.length ? '<span class="cs-chip">🎀 ' + up.length + ' on the way</span>' : '') + (next ? '<span class="cs-chip">⏳ next: ' + (nd === 0 ? 'today!' : nd + ' day' + (nd === 1 ? '' : 's')) + '</span>' : '') + (wk ? '<span class="cs-chip">✨ ' + wk + ' within a week</span>' : '') + (out.length ? '<span class="cs-chip">🎉 ' + out.length + ' out now</span>' : '');
+    $('cs-chips').innerHTML = (!list.length ? '<span class="cs-chip">✨ add a book you are waiting for</span>' : '') + (up.length ? '<span class="cs-chip">🎀 ' + up.length + ' on the way</span>' : '') + (next ? '<span class="cs-chip">⏳ next: ' + (nd === 0 ? 'today!' : nd + ' day' + (nd === 1 ? '' : 's')) + '</span>' : '') + (wk ? '<span class="cs-chip">✨ ' + wk + ' within a week</span>' : '') + (out.length ? '<span class="cs-chip">🎉 ' + out.length + ' out now</span>' : '');
     var changed = false;
     var card = function (r) {
       var d = daysTo(r.date), isOut = d < 0, isToday = d === 0;
@@ -16757,17 +16786,11 @@ p.wpx-title{display:flex!important;align-items:center;gap:12px;margin:0 0 12px!i
       say((a === 'lib' ? '📚 “' + r.title + '” is in your Library.' : '🌱 “' + r.title + '” is planted at the end of your TBR.') + ' The reading time is a 6h guess; change it any time.', { label: 'Edit details', onClick: function () { try { openReviewModal(books.indexOf(nb)); } catch (x) {} } });
     }
   });
-  Hooks.on('switchTab', {
-    before: function () { var c = $('tab-content-soon'); if (c) c.classList.add('hidden'); },
-    after: function (a) {
-      var t = a[0];
-      if (t === 'soon') { $('tab-content-soon').classList.remove('hidden'); currentTab = t; $('tab-content-soon').closest('.card').classList.add('sched-fit'); csRender(); }
-      var db2 = document.querySelector('#side-dock .dock-btn[data-tab="soon"]'); if (db2) db2.classList.toggle('active', t === 'soon');
-    }
-  });
+  Hooks.on('switchTab', { after: function (a) { if (a[0] === 'future') csRender(); } });
+  csRender();
   setTimeout(function () {   // release-day hello, once per book
     var tk = todayK(), hit = rel.filter(function (r) { return r.date === tk && !r.cheered; });
-    hit.forEach(function (r) { r.cheered = 1; say('🎉 “' + r.title + '” comes out today!', { label: 'Coming Soon', onClick: function () { switchTab('soon'); } }); });
+    hit.forEach(function (r) { r.cheered = 1; say('🎉 “' + r.title + '” comes out today!', { label: 'See releases', onClick: function () { openUpcoming(); } }); });
     if (hit.length) saveRel();
   }, 2500);
   window.csRender = csRender;
@@ -17836,9 +17859,28 @@ p.wpx-title{display:flex!important;align-items:center;gap:12px;margin:0 0 12px!i
 .lb-ov{position:fixed;inset:0;z-index:10070;background:rgba(20,16,20,.82);display:flex;align-items:center;justify-content:center;padding:20px;cursor:zoom-out}
 .lb-ov img{max-width:100%;max-height:100%;border-radius:10px;box-shadow:0 20px 50px rgba(0,0,0,.5)}
 /* passport */
-#tab-content-passport .ppx-top{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:0 0 12px}
-#tab-content-passport .ppx-top button{padding:5px 12px;border-radius:99px;border:1.5px solid rgb(var(--c-f0d0d8));background:#fff;font:800 10.5px Montserrat,sans-serif;color:rgb(var(--c-3e4a3d));cursor:pointer;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#tab-content-passport .ppx-top button.on{background:rgb(var(--c-fdeef2));border-color:rgb(var(--c-e8a0b4));color:rgb(var(--c-a8506a))}
+#tab-content-passport .ppx-top{position:relative;display:flex;justify-content:center;margin:0 0 12px}
+#tab-content-passport .ppx-dd{display:inline-flex;align-items:center;gap:9px;max-width:100%;padding:6px 8px 6px 14px;border-radius:99px;border:1.5px solid rgb(var(--c-f0d0d8));background:#fff;cursor:pointer;box-shadow:0 6px 14px -10px rgb(var(--c-a8506a)/.55);transition:border-color .15s,transform .15s}
+#tab-content-passport .ppx-dd:hover,#tab-content-passport .ppx-dd[aria-expanded="true"]{border-color:rgb(var(--c-e8a0b4));transform:translateY(-1px)}
+#tab-content-passport .ppx-dd-k{font:800 8.5px Montserrat,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:rgb(var(--c-6b705c))}
+#tab-content-passport .ppx-dd b{font:800 13px 'Playfair Display',serif;color:rgb(var(--c-a8506a));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px}
+#tab-content-passport .ppx-dd-n{font:800 9.5px Montserrat,sans-serif;color:rgb(var(--c-6b705c));background:rgb(var(--c-fdeef2));border-radius:99px;padding:2px 8px}
+#tab-content-passport .ppx-dd i{font-style:normal;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:rgb(var(--c-fdeef2));color:rgb(var(--c-a8506a));font-size:10px;transition:transform .2s}
+#tab-content-passport .ppx-dd[aria-expanded="true"] i{transform:rotate(180deg)}
+#tab-content-passport .ppx-ddl{position:absolute;top:calc(100% + 8px);left:50%;width:300px;max-width:calc(100% - 16px);margin-left:-150px;z-index:30}
+#tab-content-passport .ppx-ddl[hidden]{display:none}
+#tab-content-passport .ppx-ddl .cd-list{max-height:min(360px,60vh)}
+#tab-content-passport .ppx-ddl::before{left:calc(50% - 6px)}
+#tab-content-passport .ppx-ddl .cd-row{width:100%;border:0;background:none;font:inherit}
+#tab-content-passport .ppx-ddl .cd-row:hover,#tab-content-passport .ppx-ddl .cd-row:focus-visible{background:rgb(var(--c-fdeef2));outline:0}
+#tab-content-passport .ppx-ddl .cd-row.on{background:rgb(var(--c-fbe9e9))}
+#tab-content-passport .ppx-ddl .cd-nm small{font:italic 600 10px 'Playfair Display',serif;color:rgb(var(--c-6b705c))}
+#tab-content-passport #ppx-dob{display:none}
+#tab-content-passport .ppx-f .cal-trigger{width:100%;border:0;border-bottom:1px dotted rgba(122,46,69,.3);border-radius:0;background:none;padding:1px 0;gap:5px;font:800 11.5px Montserrat,sans-serif;text-transform:uppercase;color:#2f2630;box-shadow:none}
+#tab-content-passport .ppx-f .cal-trigger:hover,#tab-content-passport .ppx-f .cal-trigger[aria-expanded="true"]{border-bottom-color:rgb(var(--c-a8506a))}
+#tab-content-passport .ppx-f .cal-trigger .cal-ico{font-size:11px}
+#tab-content-passport .ppx-f .cal-trigger .cal-chev{margin-left:auto;font-size:8px;color:rgb(var(--c-a8506a))}
+#tab-content-passport .ppx-f .cal-trigger.empty .cal-txt{text-transform:none;font-weight:600;color:#9a8a96}
 .ppx-stage{display:flex;align-items:center;justify-content:center;gap:12px}
 .ppx-nav{flex:none;width:40px;height:40px;border-radius:50%;border:2px solid rgb(var(--c-f0d0d8));background:#fff;font:800 16px sans-serif;color:rgb(var(--c-a8506a));cursor:pointer}
 .ppx-nav:disabled{opacity:.3;cursor:default}
@@ -18120,7 +18162,7 @@ p.wpx-title{display:flex!important;align-items:center;gap:12px;margin:0 0 12px!i
   }
   function mrz(p, no) {
     var clean = function (s, n) { return String(s || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Z0-9]+/g, '<').replace(/^<+|<+$/g, '').slice(0, n); };
-    var l1 = ('P<RLM' + clean(p.sur || 'READER', 20) + '<<' + clean(p.given || 'BOOKWORM', 20)); l1 = (l1 + '<'.repeat(44)).slice(0, 44);
+    var l1 = ('P<RLM' + clean(p.given || 'BOOKWORM', 39) + '<<'); l1 = (l1 + '<'.repeat(44)).slice(0, 44);
     var dob = /^\d{4}-\d{2}-\d{2}$/.test(p.dob || '') ? p.dob.slice(2).replace(/-/g, '') : '<<<<<<';
     var l2 = (clean(no, 9) + '<' + (hash(no) % 10) + 'RLM' + dob + (hash(dob) % 10) + 'X' + '999999' + '<'.repeat(30)).slice(0, 44);
     return l1 + '\n' + l2;
@@ -18128,19 +18170,27 @@ p.wpx-title{display:flex!important;align-items:center;gap:12px;margin:0 0 12px!i
   function ppRender() {
     var pg = pages(); if (ppPage >= pg.length) ppPage = pg.length - 1; if (ppPage < 0) ppPage = 0;
     var P = pg[ppPage], box = $('ppx-page'), p = pinfo(), all = fin();
-    var no = p.no || ('ER' + String(hash((p.sur || '') + (p.given || '') + 'enchanted') % 10000000).padStart(7, '0'));
+    if (p.sur != null) { delete p.sur; SV(PK, p); }   // the passport has no surname any more
+    var no = p.no || ('ER' + String(hash((p.given || '') + 'enchanted') % 10000000).padStart(7, '0'));
     var first = all.map(function (b) { return b.finishedAt; }).filter(Boolean).sort()[0];
-    $('ppx-top').innerHTML = '<button type="button" data-pg="0" class="' + (ppPage <= 1 ? 'on' : '') + '">📕 Passport</button>' + groups().map(function (g) { var idx = pg.findIndex(function (x) { return x.t === 'visa' && x.g.f === g.f; }); return '<button type="button" data-pg="' + idx + '" class="' + (P.g && P.g.f === g.f ? 'on' : '') + '" title="' + E(g.f) + '">' + E(g.f) + ' · ' + g.l.length + '</button>'; }).join('') + '<button type="button" data-pg="' + (pg.length - 1) + '" class="' + (P.t === 'log' ? 'on' : '') + '">🧳 Travel log</button>';
+    var opts = [{ pg: 1, ic: '📕', nm: 'Passport', sub: 'cover & your details', on: ppPage <= 1 }].concat(groups().map(function (g) { return { pg: pg.findIndex(function (x) { return x.t === 'visa' && x.g.f === g.f; }), nm: g.f, ct: g.l.length, h: hash(g.f) % 360, on: !!(P.g && P.g.f === g.f) }; }), [{ pg: pg.length - 1, ic: '🧳', nm: 'Travel log', sub: 'every realm you visited', on: P.t === 'log' }]);
+    var curO = opts.filter(function (o) { return o.on; })[0] || opts[0];
+    $('ppx-top').innerHTML = '<button type="button" class="ppx-dd" id="ppx-dd" aria-haspopup="listbox" aria-expanded="false" aria-controls="ppx-ddl"><span class="ppx-dd-k">Page</span><b>' + (curO.ic ? curO.ic + ' ' : '🏰 ') + E(curO.nm) + '</b><span class="ppx-dd-n">' + (ppPage + 1) + ' / ' + pg.length + '</span><i aria-hidden="true">▾</i></button>'
+      + '<div class="cd-pop ppx-ddl" id="ppx-ddl" role="listbox" aria-label="Jump to a passport page" hidden><div class="cd-hd">Jump to a page ✧</div><div class="cd-list">' + opts.map(function (o) {
+        return '<button type="button" role="option" class="cd-row' + (o.on ? ' on' : '') + '" aria-selected="' + o.on + '" data-pg="' + o.pg + '"><span class="cd-av" style="--h:' + (o.h != null ? o.h : 340) + '">' + (o.ic || E(String(o.nm).charAt(0).toUpperCase())) + '</span><span class="cd-nm">' + E(o.nm) + (o.sub ? ' <small>' + o.sub + '</small>' : '') + '</span>' + (o.ct ? '<span class="cd-ct">' + o.ct + (o.ct === 1 ? ' book' : ' books') + '</span>' : '') + '</button>';
+      }).join('') + '</div></div>';
     box.className = 'ppx-page ' + (P.t === 'cover' ? 'ppx-cover' : 'ppx-paper'); box.style.animation = 'none'; void box.offsetWidth; box.style.animation = '';
     if (P.t === 'cover') {
       box.innerHTML = '<small>THE ENCHANTED LIBRARY</small><svg class="ppx-emb" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="54" fill="none" stroke="#f3d78a" stroke-width="3"/><circle cx="60" cy="60" r="46" fill="none" stroke="#f3d78a" stroke-width="1.2" stroke-dasharray="2 3"/><path d="M60 40c-8-6-20-8-30-6v42c10-2 22 0 30 6 8-6 20-8 30-6V34c-10-2-22 0-30 6z" fill="none" stroke="#f3d78a" stroke-width="3" stroke-linejoin="round"/><path d="M60 40v42" stroke="#f3d78a" stroke-width="3"/><path d="M46 26l6 7 8-10 8 10 6-7-2 12H48z" fill="#f3d78a"/></svg><b>READING<br>PASSPORT</b><small>' + all.length + ' BOOKS · ' + groups().length + ' REALMS</small><button type="button" data-open="1">OPEN ▸</button>';
     } else if (P.t === 'id') {
       var ph = p.photo && idbOk() ? CoverDB.thumbURL(p.photo) : null, f = function (k, lab, ph2, cls, type) { return '<div class="ppx-f"><label for="ppx-' + k + '">' + lab + '</label><input id="ppx-' + k + '" data-pp="' + k + '" class="' + (cls || '') + '" type="' + (type || 'text') + '" value="' + E(p[k] || '') + '" placeholder="' + E(ph2 || '') + '" maxlength="40"></div>'; };
       box.innerHTML = '<div class="ppx-in"><div class="ppx-hd"><b>PASSPORT · PASSEPORT</b><small>TYPE P · CODE RLM</small></div><div class="ppx-id"><label class="ppx-ph" title="Add your photo">' + (ph ? '<img alt="Your photo" src="' + ph + '">' : '📷<br>Add your<br>photo') + '<input type="file" accept="image/*" data-photo="1"></label><div>'
-        + f('sur', 'Surname / Nom', 'Your surname') + f('given', 'Given names / Prénoms', 'Your first name') + '<div class="ppx-f2">' + f('dob', 'Date of birth', '', '', 'date') + f('pron', 'Pronouns', 'she / they…') + '</div>' + f('pob', 'Place of birth', 'Your hometown') + f('nat', 'Nationality', 'Citizen of the Realms')
+        + f('given', 'Name / Nom', 'Your name') + '<div class="ppx-f2">' + f('dob', 'Date of birth', '', '', 'date') + f('pron', 'Pronouns', 'she / they…') + '</div>' + f('pob', 'Place of birth', 'Your hometown') + f('nat', 'Nationality', 'Citizen of the Realms')
         + '</div></div><div class="ppx-f2" style="margin-top:6px">' + f('genre', 'Favourite genre', 'Romantasy') + '<div class="ppx-f"><label>Passport no.</label><input value="' + E(no) + '" readonly></div><div class="ppx-f"><label>Date of issue</label><input value="' + E(first ? String(first).slice(0, 10) : dateKey(new Date())) + '" readonly></div><div class="ppx-f"><label>Date of expiry</label><input value="NEVER ✨" readonly></div></div>'
         + '<div class="ppx-f2"><div class="ppx-f"><label>Authority</label><input value="THE ENCHANTED LIBRARY" readonly></div>' + f('sig', 'Signature', 'Sign here', 'sig') + '</div>'
         + '<div class="ppx-mrz" aria-label="Machine readable zone">' + E(mrz(p, no)) + '</div></div>';
+      if (window.attachCal) attachCal('ppx-dob', { soft: true, icon: '🎂', label: 'Date of birth', kicker: 'Date of birth', empty: 'Pick your birthday', hint: '🎂 tap the year to jump', startYear: 2000, startView: 'years', maxToday: true,
+        fmt: function (v) { var d = new Date(v + 'T00:00:00'); return d.getDate() + ' ' + d.toLocaleDateString('en-US', { month: 'short' }) + ' ' + d.getFullYear(); } });
     } else if (P.t === 'visa') {
       var g = P.g, col = STC[hash(g.f) % STC.length], rot = (hash(g.f) % 30) - 15, yrs = {};
       g.l.forEach(function (b) { var y = String(b.finishedAt || '').slice(0, 4); if (y) yrs[y] = 1; });
@@ -18157,16 +18207,29 @@ p.wpx-title{display:flex!important;align-items:center;gap:12px;margin:0 0 12px!i
   window.ppRender = ppRender;
   $('ppx-prev').onclick = function () { ppPage--; ppRender(); };
   $('ppx-next').onclick = function () { ppPage++; ppRender(); };
-  $('ppx-top').addEventListener('click', function (e) { var t = e.target.closest('[data-pg]'); if (!t) return; var n = +t.dataset.pg; ppPage = n <= 0 ? 1 : n; ppRender(); });
+  var ddShow = function (on) { var l = $('ppx-ddl'), b = $('ppx-dd'); if (!l || !b) return; l.hidden = !on; b.setAttribute('aria-expanded', on); if (on) { var r = l.querySelector('.cd-row.on') || l.querySelector('.cd-row'); if (r) { r.focus({ preventScroll: true }); r.scrollIntoView({ block: 'nearest' }); } } };
+  $('ppx-top').addEventListener('click', function (e) {
+    if (e.target.closest('#ppx-dd')) { ddShow($('ppx-ddl').hidden); return; }
+    var t = e.target.closest('[data-pg]'); if (!t) return; var n = +t.dataset.pg; ppPage = n <= 0 ? 1 : n; ppRender(); var b = $('ppx-dd'); if (b) b.focus();
+  });
+  $('ppx-top').addEventListener('keydown', function (e) {
+    var l = $('ppx-ddl'); if (!l) return;
+    if (e.key === 'Escape' && !l.hidden) { e.preventDefault(); e.stopPropagation(); ddShow(false); $('ppx-dd').focus(); return; }
+    if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && (l.hidden ? e.target.id === 'ppx-dd' : true)) {
+      e.preventDefault(); e.stopPropagation(); if (l.hidden) { ddShow(true); return; }
+      var rows = [].slice.call(l.querySelectorAll('.cd-row')), i = rows.indexOf(document.activeElement), n = rows[Math.max(0, Math.min(rows.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)))]; if (n) n.focus();
+    }
+  });
+  document.addEventListener('mousedown', function (e) { var l = $('ppx-ddl'); if (l && !l.hidden && !e.target.closest('#ppx-top')) ddShow(false); });
   var pb = $('ppx-page');
   pb.addEventListener('click', function (e) { if (e.target.closest('[data-open]')) { ppPage = 1; ppRender(); return; } var c = e.target.closest('[data-ob]'); if (c) { try { openBookPage(+c.dataset.ob); } catch (x) {} } });
-  pb.addEventListener('input', function (e) { var k = e.target.dataset && e.target.dataset.pp; if (!k) return; var p = pinfo(); p[k] = e.target.value.slice(0, 40) || undefined; SV(PK, p); var m = pb.querySelector('.ppx-mrz'); if (m) { var no = p.no || ('ER' + String(hash((p.sur || '') + (p.given || '') + 'enchanted') % 10000000).padStart(7, '0')); m.textContent = mrz(p, no); } });
+  pb.addEventListener('input', function (e) { var k = e.target.dataset && e.target.dataset.pp; if (!k) return; var p = pinfo(); p[k] = e.target.value.slice(0, 40) || undefined; SV(PK, p); var m = pb.querySelector('.ppx-mrz'); if (m) { var no = p.no || ('ER' + String(hash((p.given || '') + 'enchanted') % 10000000).padStart(7, '0')); m.textContent = mrz(p, no); } });
   pb.addEventListener('change', function (e) {
     if (!e.target.dataset || !e.target.dataset.photo) return; var f = e.target.files && e.target.files[0]; if (!f) return;
     if (!idbOk()) { cuteAlert('Pictures need the browser\u2019s image storage, which is not available here 🍄'); return; }
     storeImage(f).then(function (k) { var p = pinfo(), g = G(); p.photo = k; g.pp = k; SV(PK, p); SV(GK, g); ppRender(); }, function () { cuteAlert('That picture could not be added 🍂'); });
   });
-  document.addEventListener('keydown', function (e) { if (currentTab !== 'passport' || /INPUT|TEXTAREA/.test((document.activeElement || {}).tagName || '')) return; if (e.key === 'ArrowRight' && !$('ppx-next').disabled) { ppPage++; ppRender(); } if (e.key === 'ArrowLeft' && !$('ppx-prev').disabled) { ppPage--; ppRender(); } });
+  document.addEventListener('keydown', function (e) { if (currentTab !== 'passport' || /INPUT|TEXTAREA/.test((document.activeElement || {}).tagName || '') || ($('ppx-ddl') && !$('ppx-ddl').hidden) || !document.querySelector('.cal-pop[hidden]')) return; if (e.key === 'ArrowRight' && !$('ppx-next').disabled) { ppPage++; ppRender(); } if (e.key === 'ArrowLeft' && !$('ppx-prev').disabled) { ppPage--; ppRender(); } });
   Hooks.on('switchTab', {
     before: function () { var c = $('tab-content-passport'); if (c) c.classList.add('hidden'); },
     after: function (a) {
