@@ -11211,6 +11211,7 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
   var hookFilters = function () { var box = $q('#bl-filters'); if (!box) return null; var was = box.style.display === 'none'; if (was) { try { toggleBlFilters(); } catch (e) { return null; } } return function () { if (was && box.style.display !== 'none') { try { toggleBlFilters(); } catch (e) {} } }; };
   var btnIn = function (re) { return function () { var m = $q('#review-modal'); return m && [].slice.call(m.querySelectorAll('button')).filter(function (x) { return re.test(x.textContent); })[0]; }; };
   var year = function (k) { return function () { try { yrGo(k); } catch (e) {} return null; }; };
+  var ltp = function (k) { return function () { try { ltGo(k); } catch (e) {} return null; }; };
   var yearTabs = function () { var b = $q('#tab-content-year button[onclick^="yrGo("]'); return b && b.parentElement; };
 
   var idx = function () { for (var a = 0; a < arguments.length; a++) { var k = -1; for (var j = 0; j < books.length; j++) if (books[j].id === arguments[a]) { k = j; break; } if (k > -1) return k; } return 0; };
@@ -11255,7 +11256,7 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
     [['#fw-card'], null, `Fairy Whisper ✨`, 'The left panel', `<p>A random 💖 <b>highlight from one of your own books</b> pops up on the home panel. Press <b>Another whisper</b> for a new one, or open the book it came from. It appears once you have saved a few highlights.</p>`],
     [['#wotd-card'], null, `Word of the day 📖`, 'The left panel', `<p>Every day an unusual word is picked from <b>your own highlights</b>, with the line it came from and the book. <b>🔎 Look it up</b> opens a dictionary, and <b>🔀 Another word</b> picks a new one.</p>`],
     [function () { return byText('Saved automatically'); }, null, `Saved automatically + Backup`, 'The left panel', `<p>Everything is <b>saved automatically</b> in this browser as you work. Because nothing is online, <b>download a backup now and then</b> with <b>Back up</b>. <b>Restore</b> loads one back, and <b>Reset all data</b> wipes everything, so be careful with that one.</p><p>If it has been about two weeks since your last backup, a <b>Back up now / Later</b> reminder shows at the top of the page.</p>`],
-    [['.xo .xc', '#qa-dock'], 'backlog', `Reading Bingo 🎯`, 'Just for fun', `<p>The two little buttons at the bottom-left. <b>Reading Bingo</b> is a 5×5 card of reading challenges (a sequel, read outdoors, a one-word title, a five-star read…). Squares are ticked from your real reading, hover a stamped one to see its book, and every new line earns <b>+5⭐</b>. <b>🔄 New card</b> deals a fresh one.</p>`, null, hookOverlay('#qb-b')],
+    [['.xo .xc', '#qa-dock'], 'backlog', `Reading Bingo 🎯`, 'Just for fun', `<p>The little buttons at the bottom-left: 🎯 <b>Reading Bingo</b>, ♾️ <b>Lifetime</b> (your all-time stats and medals) and 🎁 <b>Your Wrapped</b>. <b>Reading Bingo</b> is a 5×5 card of reading challenges (a sequel, read outdoors, a one-word title, a five-star read…). Squares are ticked from your real reading, hover a stamped one to see its book, and every new line earns <b>+5⭐</b>. <b>🔄 New card</b> deals a fresh one.</p>`, null, hookOverlay('#qb-b')],
     [['.xo .xc', '#qa-dock'], null, `Your Wrapped 🎁`, 'Just for fun', `<p><b>Your Wrapped</b> turns your year into a shareable recap card: a <b>wall of every cover you finished</b> that year (in the order you read them, favourites get a little heart), then <b>books, longest streak, minutes and pages</b>, plus your top-rated book and best month. Pick the year at the top; <b>💾 Save as image</b> downloads it.</p>`, null, hookOverlay('#qb-w')],
     [['#theme-dock'], null, `Themes 🎨`, 'Just for fun', `<p>Six colour themes in the bottom-left corner, each a matched pair: <b>Sage &amp; rose</b>, <b>Pink &amp; lavender</b>, <b>Lilac &amp; mint</b>, <b>Ocean &amp; coral</b>, <b>Pumpkin &amp; berry</b> and <b>Cocoa &amp; strawberry</b>. Tap one to recolour the whole app.</p>`],
     [[uni('#ur-undo', redoBtn)], null, `Undo and redo ↶ ↷`, 'Tools', `<p>Made a mistake? <b>Undo</b> steps back through your recent changes (<b>Ctrl/⌘ + Z</b>) and <b>Redo</b> brings them back (<b>Ctrl/⌘ + Shift + Z</b>).</p>`],
@@ -11295,6 +11296,10 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
     'now': [
     [['#now-content', '#tab-content-now'], 'now', `Reading Now 📖`, 'Reading Now', `<p>One full card for <b>every book you are reading</b>.</p><ul><li>Progress, time and pages (✎ to fix them), speed and a <b>finish estimate</b></li><li><b>Log</b> minutes and pages</li><li><b>🔖 Bookmark</b> and <b>📝 Page notes</b></li><li><b>🌱 First impressions</b> and <b>🔮 Theories &amp; predictions</b></li><li><b>🕰️ Timeline</b> for that book</li></ul><p>Reading a second book too? Log pages on it in the TBR and it gets its own card. Sessions feed your goal ring, streak, heatmap and each book's progress.</p>`],
     [['.nl-later', '#nl-shelf', '#now-content'], 'now', `🌙 Save for later`, 'Reading Now', `<p>Started a book that your plan puts later in the year? Press <b>🌙 Save for later</b> on its card. It keeps its progress and its place in your plan, it is not DNF'd, and it leaves Reading Now. It waits in the <b>🌙 Saved for later</b> list at the bottom and comes back on its own once your plan reaches it, or press <b>↩ Read now</b>.</p><p>After you log, a little <b>📍 Where did you read?</b> bubble lets you tap your spot (or add your own). Set a <b>reading limit</b> in ⚙️ Settings → Reading Now, and you get a gentle nudge when you open more books than that. The status menu on a TBR card also has 🌙 Saved for later.</p>`],
+    ],
+    'lifetime': [
+    [['#lt-hero', '#tab-content-lifetime'], 'lifetime', `Lifetime ♾️ (1/2)`, 'Stats', `<p>The <b>♾️</b> button at the bottom-left, beside 🎯 Bingo, opens your <b>whole reading life</b> across every year. The header shows your books, hours and medals so far.</p><p>On <b>♾️ Reading life</b>: every book, page and hour, reading days, best streak, fandoms, authors, highlights and review words, a <b>year-by-year</b> bar list, and all-time superlatives such as your longest read and 📝 <b>longest review</b>.</p>`, null, ltp('life')],
+    [['#lt-root'], 'lifetime', `Lifetime: Achievements 🏅 (2/2)`, 'Stats', `<p>Medals with tiers: 🥉 Bronze, 🥈 Silver, 🥇 Gold and 💎 Diamond, for books, pages, hours, streaks, reading days, reviews, highlights, 5-star reads, fandoms, authors and rereads. Your top tropes, vibes and fandoms get their own medals too (10, 50, 100… books). Each card shows how far you are from the next tier, and a toast pops up when you earn one (tap <b>See them</b> to jump here).</p>`, null, ltp('ach')],
     ],
     'passport': [
     [['#ppx-page', '#tab-content-passport'], 'passport', `Book Passport 📕`, 'Just for fun', `<p>A real-looking passport for your reading travels. Press <b>OPEN ▸</b> on the cover.</p><ul><li><b>Identity page</b> – tap 📷 to add your own photo, then fill in your name, birthday, pronouns, hometown, nationality and favourite genre, and sign it. The machine-readable lines at the bottom update as you type</li><li><b>Visa pages</b> – one per fandom, with its own ink stamp (books, first visit and year) and the covers of every book you read there, in a sepia tint (hover to see the colour, tap to open the book)</li><li><b>🧳 Travel log</b> – every realm you have visited</li></ul><p>Use ◀ ▶ (or the arrow keys) and the chips at the top to jump to a fandom.</p>`],
@@ -11337,15 +11342,13 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
     [['#bp-root', '#tab-content-book'], null, `A book's own page 🌸`, 'Book page', `<p>Open a finished book to get its own page. Its buttons include <b>🃏 Trading card</b> (a collectible card whose rarity comes from your rating, saved as a picture) and <b>🎨 Mood board &amp; fan art</b>. <b>🌸 Details</b> shows the big cover, rating, tags, vibes and warnings and the series pop-out; <b>✍️ Review &amp; Notes</b> holds your review, feelings and quotes; <b>📊 Stats</b> shows how long it took and your reading pace. <b>← Back</b> returns to where you were.</p>`],
     ],
     'year': [
-    [['#year-select', '#year-content'], 'year', `Year in Review 📊 (1/9)`, 'Stats', `<p>Pick a year at the top. The header is your <b>Reading Wrapped</b>: books finished, time, pages and streak, with a little title for the kind of reader you are. Sub-pages sit underneath: <b>🌟 Highlights, 📚 Bookshelf, ⏱️ Habits, 💗 Taste</b>, 🏆 Ranking, and <b>🌗 Rhythm, ⚖️ Compare, ♾️ Lifetime, 🏅 Achievements</b>.</p>`, null, year('hi')],
-    [yrBody, null, `Year: Highlights 🌟 (2/9)`, 'Stats', `<ul><li><b>Reading goal</b> for the year (set how many books)</li><li>💞 <b>Ship of the year</b></li><li>🎀 <b>Superlatives</b> – longest, fastest, highest rated…</li><li><b>Rating distribution</b> and <b>speed over time</b> charts</li><li>🎖️ <b>Badges</b> you have earned</li></ul>`, null, year('hi')],
-    [yrBody, null, `Year: Bookshelf 📚 (3/9)`, 'Stats', `<ul><li><b>Books per month</b> chart</li><li>🌈 <b>Your rainbow shelf</b> – finished books lined up by cover colour</li><li>🏷️ <b>Tropes &amp; vibes</b> you read most (pie charts beside the clouds)</li></ul>`, null, year('bk')],
-    [yrBody, null, `Year: Habits ⏱️ (4/9)`, 'Stats', `<ul><li>🗓️ <b>Reading heatmap</b> – one square per day</li><li>🧸 <b>Habit stickers</b>: days read, best streak, minutes, sessions, pages, pages per hour, pace vs. listed time, average per book, days to finish</li></ul>`, null, year('hb')],
-    [yrBody, null, `Year: Taste 💗 (5/9)`, 'Stats', `<ul><li>🍰 <b>Your taste profile</b></li><li>✨ <b>What you love in a book</b> – your average per rating category</li><li>💫 <b>How your books made you feel</b> and mood weather</li><li>👑 <b>Character Hall of Fame</b></li><li>🔬 <b>Ratings by trope, vibe &amp; warning</b> – which tags score best for you</li></ul>`, null, year('ta')],
-    [yrBody, null, `Year: Rhythm 🌗 (6/9)`, 'Stats', `<ul><li>🌗 <b>From sunrise to moonrise</b> – an animated sky that turns from day to night, with your reader type (🌅 early bird, ☀️ afternoon, 🌇 golden hour or 🌙 night owl) and your peak hour</li><li>Four cards show how much you read in the <b>morning, afternoon, evening and night</b>, and a 24-hour bar chart shows every hour</li><li>📍 <b>Where you read most</b> – your reading spots from the little “Where did you read?” bubble after you log</li></ul>`, null, year('rh')],
-    [yrBody, null, `Year: Compare ⚖️ (7/9)`, 'Stats', `<p>Pick any two years at the top. Books, pages, hours, reading days, best streak, average rating, 5-star reads, reviews, rereads and average length sit side by side with ▲ ▼ arrows, plus your top fandom, trope and author and a <b>books per month</b> chart for both years.</p>`, null, year('cmp')],
-    [yrBody, null, `Year: Lifetime ♾️ (8/9)`, 'Stats', `<p>Your <b>whole reading life</b> in one place: every book, page and hour, reading days, best streak, fandoms, authors, highlights and review words. Below are a <b>year-by-year</b> bar list and all-time superlatives such as your longest read and 📝 <b>longest review</b>.</p>`, null, year('life')],
-    [yrBody, null, `Year: Achievements 🏅 (9/9)`, 'Stats', `<p>Medals with tiers: 🥉 Bronze, 🥈 Silver, 🥇 Gold and 💎 Diamond, for books, pages, hours, streaks, reading days, reviews, highlights, 5-star reads, fandoms, authors and rereads. Your top tropes, vibes and fandoms get their own medals too (10, 50, 100… books). Each card shows how far you are from the next tier, and a toast pops up when you earn one.</p>`, null, year('ach')],
+    [['#year-select', '#year-content'], 'year', `Year in Review 📊 (1/7)`, 'Stats', `<p>Pick a year at the top. The header is your <b>Reading Wrapped</b>: books finished, time, pages and streak, with a little title for the kind of reader you are. Sub-pages sit underneath: <b>🌟 Highlights, 📚 Bookshelf, ⏱️ Habits, 💗 Taste</b>, 🏆 Ranking, <b>🌗 Rhythm</b> and <b>⚖️ Compare</b>. Your all-time stats and medals now live in their own <b>♾️ Lifetime</b> tab (the ♾️ button at the bottom-left).</p>`, null, year('hi')],
+    [yrBody, null, `Year: Highlights 🌟 (2/7)`, 'Stats', `<ul><li><b>Reading goal</b> for the year (set how many books)</li><li>💞 <b>Ship of the year</b></li><li>🎀 <b>Superlatives</b> – longest, fastest, highest rated…</li><li><b>Rating distribution</b> and <b>speed over time</b> charts</li><li>🎖️ <b>Badges</b> you have earned</li></ul>`, null, year('hi')],
+    [yrBody, null, `Year: Bookshelf 📚 (3/7)`, 'Stats', `<ul><li><b>Books per month</b> chart</li><li>🌈 <b>Your rainbow shelf</b> – finished books lined up by cover colour</li><li>🏷️ <b>Tropes &amp; vibes</b> you read most (pie charts beside the clouds)</li></ul>`, null, year('bk')],
+    [yrBody, null, `Year: Habits ⏱️ (4/7)`, 'Stats', `<ul><li>🗓️ <b>Reading heatmap</b> – one square per day</li><li>🧸 <b>Habit stickers</b>: days read, best streak, minutes, sessions, pages, pages per hour, pace vs. listed time, average per book, days to finish</li></ul>`, null, year('hb')],
+    [yrBody, null, `Year: Taste 💗 (5/7)`, 'Stats', `<ul><li>🍰 <b>Your taste profile</b></li><li>✨ <b>What you love in a book</b> – your average per rating category</li><li>💫 <b>How your books made you feel</b> and mood weather</li><li>👑 <b>Character Hall of Fame</b></li><li>🔬 <b>Ratings by trope, vibe &amp; warning</b> – which tags score best for you</li></ul>`, null, year('ta')],
+    [yrBody, null, `Year: Rhythm 🌗 (6/7)`, 'Stats', `<ul><li>🌗 <b>From sunrise to moonrise</b> – an animated sky that turns from day to night, with your reader type (🌅 early bird, ☀️ afternoon, 🌇 golden hour or 🌙 night owl) and your peak hour</li><li>Four cards show how much you read in the <b>morning, afternoon, evening and night</b>, and a 24-hour bar chart shows every hour</li><li>📍 <b>Where you read most</b> – your reading spots from the little “Where did you read?” bubble after you log</li></ul>`, null, year('rh')],
+    [yrBody, null, `Year: Compare ⚖️ (7/7)`, 'Stats', `<p>Pick any two years at the top. Books, pages, hours, reading days, best streak, average rating, 5-star reads, reviews, rereads and average length sit side by side with ▲ ▼ arrows, plus your top fandom, trope and author and a <b>books per month</b> chart for both years.</p>`, null, year('cmp')],
     ],
     'month': [
     [['#month-m', '#month-content'], 'month', `Monthly Recap 🌙`, 'Stats', `<p>Use ‹ and › (or the month and year pickers) to move through months.</p><ul><li>🗓️ <b>Reading calendar</b> – check-ins, 30–90 min and 90+ min days, 🏁 finishes and starts; <b>tap a day</b> to peek inside it</li><li>🏁 <b>Finished this month</b> list and 📊 <b>minutes per week</b></li><li>🌟 <b>Month highlights</b>: book of the month, best streak, best day, average rating, books started, sessions</li></ul>`],
@@ -11457,7 +11460,7 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
   purgeDemo();   /* clears leftovers if the page was closed in the middle of a tour */
 
   var i = 0, hl, card, blk, open = false, run = MAIN, runKey = 'main', origTab = null, keepDemo = false;
-  var TABKEYS = ['backlog', 'schedule', 'reviews', 'soon', 'passport', 'lib', 'future', 'alltime', 'tagmgr', 'now', 'year', 'month', 'sessions', 'abandoned', 'favorites', 'quotes', 'soundtrack', 'shelf', 'series', 'settings'];
+  var TABKEYS = ['backlog', 'schedule', 'reviews', 'soon', 'passport', 'lib', 'future', 'alltime', 'tagmgr', 'now', 'year', 'lifetime', 'month', 'sessions', 'abandoned', 'favorites', 'quotes', 'soundtrack', 'shelf', 'series', 'settings'];
   function curTab() { for (var n = 0; n < TABKEYS.length; n++) { var c = $q('#tab-content-' + TABKEYS[n]); if (c && !c.classList.contains('hidden')) return TABKEYS[n]; } return null; }
   function cur() { return run.filter(function (s) { return s[5] !== 'ao' || ao(); }); }
   function done() { try { localStorage.setItem(KEY, '1'); } catch (e) {} }
@@ -11521,7 +11524,7 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
   function setMini(yes) { try { localStorage.setItem(MK, yes ? 'yes' : 'no'); } catch (e) {} document.body.classList.toggle('no-mini', !yes); }
   window.setMini = setMini;
   document.body.classList.toggle('no-mini', !miniOn());
-  var TABHOSTS = [['home', '#col-left', 'the home panel'], ['lib', '#tab-content-lib', 'the Library'], ['future', '#tab-content-future', 'Future Chapters'], ['alltime', '#tab-content-alltime', 'the All-Time Bracket'], ['book', '#tab-content-book', 'the book page'], ['tagmgr', '#tab-content-tagmgr', 'the Tag manager'], ['backlog', '#tab-content-backlog', 'the TBR'], ['schedule', '#tab-content-schedule', 'the Weekly Path'], ['reviews', '#tab-content-reviews', 'Finished books'], ['now', '#tab-content-now', 'Reading Now'], ['year', '#tab-content-year', 'Year in Review'], ['month', '#tab-content-month', 'Monthly Recap'], ['sessions', '#tab-content-sessions', 'Sessions'], ['abandoned', '#tab-content-abandoned', 'the Graveyard'], ['favorites', '#tab-content-favorites', 'Favorites'], ['quotes', '#tab-content-quotes', 'Quotes'], ['soundtrack', '#tab-content-soundtrack', 'the Book Soundtrack'], ['soon', '#tab-content-soon', 'Coming Soon'], ['passport', '#tab-content-passport', 'the Book Passport'], ['shelf', '#tab-content-shelf', 'the Bookshelf'], ['series', '#tab-content-series', 'the Series Tracker'], ['settings', '#tab-content-settings', 'Settings']];
+  var TABHOSTS = [['home', '#col-left', 'the home panel'], ['lib', '#tab-content-lib', 'the Library'], ['future', '#tab-content-future', 'Future Chapters'], ['alltime', '#tab-content-alltime', 'the All-Time Bracket'], ['book', '#tab-content-book', 'the book page'], ['tagmgr', '#tab-content-tagmgr', 'the Tag manager'], ['backlog', '#tab-content-backlog', 'the TBR'], ['schedule', '#tab-content-schedule', 'the Weekly Path'], ['reviews', '#tab-content-reviews', 'Finished books'], ['now', '#tab-content-now', 'Reading Now'], ['year', '#tab-content-year', 'Year in Review'], ['lifetime', '#tab-content-lifetime', 'Lifetime'], ['month', '#tab-content-month', 'Monthly Recap'], ['sessions', '#tab-content-sessions', 'Sessions'], ['abandoned', '#tab-content-abandoned', 'the Graveyard'], ['favorites', '#tab-content-favorites', 'Favorites'], ['quotes', '#tab-content-quotes', 'Quotes'], ['soundtrack', '#tab-content-soundtrack', 'the Book Soundtrack'], ['soon', '#tab-content-soon', 'Coming Soon'], ['passport', '#tab-content-passport', 'the Book Passport'], ['shelf', '#tab-content-shelf', 'the Bookshelf'], ['series', '#tab-content-series', 'the Series Tracker'], ['settings', '#tab-content-settings', 'Settings']];
   var HEADHOSTS = [['edit', function () { var t = $q('#modal-book-title'); return t && t.parentElement; }, 'the edit window'], ['dups', function () { return $q('#dup-modal .dup-head'); }, 'Tidy duplicates']];
   function mkMini(k, label, inl) { var b = document.createElement('button'); b.type = 'button'; b.className = 'tourx-mini' + (inl ? ' inl' : ''); b.dataset.k = k; b.textContent = '❓ Quick tour'; b.title = 'Quick tour of ' + label; b.setAttribute('aria-label', 'Quick tour of ' + label); return b; }
   function placeMinis() {
@@ -16871,6 +16874,18 @@ p.wpx-title{display:flex!important;align-items:center;gap:12px;margin:0 0 12px!i
 .ach-sum{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:12px}
 .ach-sum span{padding:4px 12px;border-radius:99px;background:#fff;border:1.5px solid rgb(var(--c-f0d0d8));font:800 11px Montserrat,sans-serif;color:rgb(var(--c-3e4a3d))}
 @media(prefers-reduced-motion:reduce){.dn-sky,.dn-stars,.dn-orbit,.dn-sun,.dn-moon,.dn-stars i,#loc-pop{animation:none}.dn-stars{opacity:0}}
+
+/* Lifetime tab */
+#tab-content-lifetime .lt-hero{display:flex;align-items:center;gap:14px;padding:16px 18px;margin:0 0 12px;border-radius:24px;background:linear-gradient(120deg,rgb(var(--c-fdeef2)),rgb(var(--c-fffaf0,255 250 240)) 55%,rgb(var(--c-f2eeff,242 238 255)));border:1.5px solid rgb(var(--c-f0d0d8));box-shadow:0 10px 24px -18px rgb(var(--c-a8506a)/.6)}
+#tab-content-lifetime .lt-inf{flex:none;width:58px;height:58px;border-radius:50%;display:grid;place-items:center;font-size:28px;background:#fff;border:2px solid rgb(var(--c-f4c9d2));box-shadow:0 6px 16px -8px rgb(var(--c-a8506a)/.5);animation:lt-rock 6s ease-in-out infinite}
+@keyframes lt-rock{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(6deg) scale(1.05)}}
+#tab-content-lifetime .lt-ht b{display:block;font:800 22px 'Playfair Display',serif;color:rgb(var(--c-a8506a))}
+#tab-content-lifetime .lt-ht small{display:block;font:italic 600 12px 'Playfair Display',serif;color:rgb(var(--c-6b705c))}
+#tab-content-lifetime .lt-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+#tab-content-lifetime .lt-chips span{padding:3px 10px;border-radius:99px;background:#fff;border:1px solid rgb(var(--c-e8c4c4));font:800 10.5px Montserrat,sans-serif;color:rgb(var(--c-3e4a3d))}
+#tab-content-lifetime .lt-nav{justify-content:center;margin:0 0 12px}
+#qa-dock #qb-l.on{border-color:rgb(var(--c-8a9a5b));transform:scale(1.1)}
+@media (prefers-reduced-motion:reduce){#tab-content-lifetime .lt-inf{animation:none}}
 </style>
 <script type="text/plain" data-app id="b2-js">
 (function () {
@@ -17004,7 +17019,7 @@ p.wpx-title{display:flex!important;align-items:center;gap:12px;margin:0 0 12px!i
   function sessIn(y) { var out = []; books.forEach(function (b) { (b.sessions || []).forEach(function (s) { if (!y || String(s.date || '').slice(0, 4) === y) out.push(s); }); }); return out; }
 
   /* ================= 4. Year in Review pages ================= */
-  var PAGES = [['rh', '🌗 Rhythm'], ['cmp', '⚖️ Compare'], ['life', '♾️ Lifetime'], ['ach', '🏅 Achievements']];
+  var PAGES = [['rh', '🌗 Rhythm'], ['cmp', '⚖️ Compare']];   // ♾️ Lifetime and 🏅 Achievements have their own tab now (section 7)
   var cmpA = null, cmpB = null;
   function selY() { var s = $('year-select'); var v = s ? s.value : 'all'; return v === 'all' ? '' : v; }
   var SLOTS = [['m', '🌅', 'Morning', '5am – noon', 5, 12, '#ffd8a8', '#fff3e0'], ['a', '☀️', 'Afternoon', 'noon – 5pm', 12, 17, '#ffe58a', '#fffbe0'], ['e', '🌇', 'Evening', '5pm – 9pm', 17, 21, '#f7b2a0', '#fdeef0'], ['n', '🌙', 'Night', '9pm – 5am', 21, 29, '#b8a9e6', '#f2eeff']];
@@ -17098,7 +17113,7 @@ p.wpx-title{display:flex!important;align-items:center;gap:12px;margin:0 0 12px!i
     if (books.some(function (b) { return b.demo; })) return;   // tour demo books never earn medals
     try {
       var seen = LS('enchantedAch', null), cur = {}; achList().forEach(function (a) { if (a.tier) cur[a.k] = a.tier; });
-      if (seen) Object.keys(cur).forEach(function (k) { if (cur[k] > (seen[k] || 0)) { var a = achList().filter(function (x) { return x.k === k; })[0]; say(MED[cur[k] - 1] + ' New achievement: ' + a.name + ' · ' + MEDN[cur[k] - 1] + '!', { label: 'See them', onClick: function () { try { switchTab('year'); setTimeout(function () { yrGo('ach'); }, 250); } catch (e) {} } }); } });
+      if (seen) Object.keys(cur).forEach(function (k) { if (cur[k] > (seen[k] || 0)) { var a = achList().filter(function (x) { return x.k === k; })[0]; say(MED[cur[k] - 1] + ' New achievement: ' + a.name + ' · ' + MEDN[cur[k] - 1] + '!', { label: 'See them', onClick: function () { try { ltGo('ach'); } catch (e) {} } }); } });
       SV('enchantedAch', cur);
     } catch (e) {}
   }
@@ -17111,7 +17126,7 @@ p.wpx-title{display:flex!important;align-items:center;gap:12px;margin:0 0 12px!i
   function paint(k) {
     var root = $('b2-root'); if (!root) return;
     var y = selY();
-    root.innerHTML = k === 'rh' ? pageRhythm(y) : k === 'cmp' ? pageCompare() : k === 'life' ? pageLife() : pageAch();
+    root.innerHTML = k === 'rh' ? pageRhythm(y) : pageCompare();
   }
   function sync() {
     if (busy || !yb) return; var nav = yb.querySelector(':scope > .wr-nav'); if (!nav) return; busy = true;
@@ -17143,6 +17158,39 @@ p.wpx-title{display:flex!important;align-items:center;gap:12px;margin:0 0 12px!i
     var s = e.target.closest && e.target.closest('[data-cmp]'); if (!s) return;
     if (s.dataset.cmp === 'a') cmpA = s.value; else cmpB = s.value; paint('cmp');
   });
+
+  /* ================= 7. Lifetime tab: the ♾️ button beside 🎯 Bingo, with Achievements inside ================= */
+  var ltPage = 'life', thost = $('tab-content-favorites') && $('tab-content-favorites').parentNode;
+  if (thost) {
+    thost.insertAdjacentHTML('beforeend', '<div id="tab-content-lifetime" class="hidden flex-1 flex flex-col"><div class="lt-hero" id="lt-hero"></div>'
+      + '<div class="wr-nav lt-nav" id="lt-nav" role="tablist" aria-label="Lifetime pages"><button type="button" role="tab" data-lt="life">♾️ Reading life</button><button type="button" role="tab" data-lt="ach">🏅 Achievements</button></div>'
+      + '<div id="lt-root"></div></div>');
+    $('lt-nav').addEventListener('click', function (e) { var b = e.target.closest('[data-lt]'); if (b) window.ltGo(b.dataset.lt); });
+  }
+  function ltPaint() {
+    var hero = $('lt-hero'), root = $('lt-root'); if (!root) return;
+    var S = yStats(''), med = 0; achList().forEach(function (a) { med += a.tier; });
+    hero.innerHTML = '<span class="lt-inf" aria-hidden="true">♾️</span><div class="lt-ht"><b>Lifetime</b><small>Your whole reading life, every year together</small>'
+      + '<div class="lt-chips"><span>📚 ' + nf(S.books) + ' book' + (S.books === 1 ? '' : 's') + '</span><span>⏳ ' + nf(S.mins / 60) + ' hours</span><span>🏅 ' + med + ' medal' + (med === 1 ? '' : 's') + '</span></div></div>';
+    $('lt-nav').querySelectorAll('[data-lt]').forEach(function (b) { var on = b.dataset.lt === ltPage; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
+    root.dataset.k = ltPage; root.innerHTML = ltPage === 'ach' ? pageAch() : pageLife();
+  }
+  window.ltGo = function (k) { ltPage = k === 'ach' ? 'ach' : 'life'; if (currentTab !== 'lifetime') switchTab('lifetime'); else ltPaint(); };
+  var qd = $('qa-dock');
+  if (qd) {
+    var lb = document.createElement('button'); lb.type = 'button'; lb.id = 'qb-l'; lb.title = 'Lifetime stats & achievements'; lb.setAttribute('aria-label', 'Lifetime stats and achievements'); lb.textContent = '♾️';
+    lb.onclick = function () { window.ltGo(ltPage); };
+    var bg = $('qb-b'); if (bg && bg.parentNode === qd) qd.insertBefore(lb, bg.nextSibling); else qd.appendChild(lb);
+  }
+  Hooks.on('switchTab', {
+    before: function () { var c = $('tab-content-lifetime'); if (c) c.classList.add('hidden'); },
+    after: function (a) {
+      var t = a[0], c = $('tab-content-lifetime');
+      if (t === 'lifetime' && c) { c.classList.remove('hidden'); currentTab = t; c.closest('.card').classList.add('sched-fit'); ltPaint(); }
+      var q = $('qb-l'); if (q) { q.classList.toggle('on', t === 'lifetime'); q.setAttribute('aria-pressed', t === 'lifetime'); }
+    }
+  });
+  try { AppEvents.on('books:saved', function () { if (currentTab === 'lifetime') setTimeout(ltPaint, 50); }); } catch (e) {}
 })();
 </script>
 <style id="b3-css">
