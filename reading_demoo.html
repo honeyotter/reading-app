@@ -6598,11 +6598,13 @@ body{padding-left:62px}
     // the little keepsakes shelf; "rich" = the roomy card on the Details tab (each tile gets a one-line hint)
     function keepsHTML(b, rich) {
         const ref = bookRef(b), t = (cls, on, click, ic, nm, hint, title) => `<button type="button" class="bp-keep ${cls}${on ? ' on' : ''}" onclick="${click}"${cls === 'k1' ? ` aria-pressed="${!!on}"` : ''} title="${title}"><i aria-hidden="true">${ic}</i><span>${nm}${rich ? `<small>${hint}</small>` : ''}</span></button>`;
-        return `<div class="bp-keeps-h" aria-hidden="true"><span>\u2727 keepsakes \u2727</span></div><div class="bp-keeps" role="group" aria-label="Keepsakes for this book">`
+        let pics = 0; try { const g = JSON.parse(localStorage.getItem('enchantedGallery') || '{}') || {}, id = String(b.id); pics = ((g.mb || {})[id] || []).length + ((g.fa || {})[id] || []).length; } catch (e) {}
+        const n = 2 + (typeof downloadReviewCard === 'function' ? 1 : 0) + (pics ? 1 : 0);
+        return `<div class="bp-keeps-h" aria-hidden="true"><span>\u2727 keepsakes \u2727</span></div><div class="bp-keeps n${n}" role="group" aria-label="Keepsakes for this book">`
             + t('k1', b.favorite, `toggleFavorite(${ref});bpRender()`, b.favorite ? '\u{1F496}' : '\u{1F90D}', 'Favorite', b.favorite ? 'one of your faves' : 'tap to heart it', b.favorite ? 'Remove from favorites' : 'Add to favorites')
             + (typeof downloadReviewCard === 'function' ? t('k2', 0, `downloadReviewCard(${ref})`, '\u{1F48C}', 'Review card', 'a picture of your review', 'Download a review card picture') : '')
             + t('k3', 0, `openTradingCard(${ref})`, '\u{1F0CF}', 'Trading card', 'its collectible card', "Open this book's trading card")
-            + t('k4', 0, `openGallery(${ref})`, '\u{1F3A8}', 'Mood board', 'pictures &amp; fan art', 'Mood board &amp; fan art') + '</div>';
+            + (pics ? t('k4', 0, `openGallery(${ref})`, '\u{1F3A8}', 'Mood board', pics + (pics === 1 ? ' picture' : ' pictures'), 'Mood board &amp; fan art') : '') + '</div>';
     }
     function idHTML(b, cls, noKeeps) {
         const ref = bookRef(b);
@@ -11360,7 +11362,7 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
     [['#tab-content-alltime'], 'alltime', `All-Time Bracket 🏆`, 'Just for fun', `<p>A tournament between <b>every book you have finished</b>. Each duel shows two books: <b>tap the one you prefer</b>. Winners move on through the quarter-finals and semi-finals until one is crowned your <b>all-time favourite</b>.</p><ul><li>The podium shows 🥇 🥈 🥉</li><li><b>Redraw with current books</b> starts a fresh bracket (your picks are cleared)</li><li>Year in Review has the same bracket for a single year</li></ul>`],
     ],
     'book': [
-    [['#bp-root', '#tab-content-book'], null, `A book's own page 🌸`, 'Book page', `<p>Open a finished book to get its own page. Under the cover, <b>✎ Edit book</b> opens the edit window. On <b>Details</b> the <b>✧ keepsakes ✧</b> card sits on the right next to the dates and pages (on the other tabs it is a small shelf under the cover). It holds 💖 <b>Favorite</b>, 💌 <b>Review card</b> (a picture of your review), 🃏 <b>Trading card</b> (a collectible card whose rarity comes from your rating; they are all collected in the 📒 Card Binder) and 🎨 <b>Mood board</b> (with your fan art). <b>🌸 Details</b> shows the big cover, rating, tags, vibes and warnings and the series pop-out; <b>✍️ Review &amp; Notes</b> holds your review, feelings and quotes; <b>📊 Stats</b> shows how long it took and your reading pace. <b>← Back</b> returns to where you were.</p>`],
+    [['#bp-root', '#tab-content-book'], null, `A book's own page 🌸`, 'Book page', `<p>Open a finished book to get its own page. Under the cover, <b>✎ Edit book</b> opens the edit window. On <b>Details</b> the <b>✧ keepsakes ✧</b> card sits on the right next to the dates and pages (on the other tabs it is a small shelf under the cover). It holds 💖 <b>Favorite</b>, 💌 <b>Review card</b> (a picture of your review), 🃏 <b>Trading card</b> (a collectible card whose rarity comes from your rating; they are all collected in the 📒 Card Binder) and 🎨 <b>Mood board</b> (with your fan art), which only shows up once the book has pictures or fan art. Add them from the edit window under Extras. <b>🌸 Details</b> shows the big cover, rating, tags, vibes and warnings and the series pop-out; <b>✍️ Review &amp; Notes</b> holds your review, feelings and quotes; <b>📊 Stats</b> shows how long it took and your reading pace. <b>← Back</b> returns to where you were.</p>`],
     ],
     'year': [
     [['#year-select', '#year-content'], 'year', `Year in Review 📊 (1/7)`, 'Stats', `<p>Pick a year at the top. The header is your <b>Reading Wrapped</b>: books finished, time, pages and streak, with a little title for the kind of reader you are. Sub-pages sit underneath: <b>🌟 Highlights, 📚 Bookshelf, ⏱️ Habits, 💗 Taste</b>, 🏆 Ranking, <b>🌗 Rhythm</b> and <b>⚖️ Compare</b>. Your all-time stats and medals now live in their own <b>♾️ Lifetime</b> tab (the ♾️ button at the bottom-left).</p>`, null, year('hi')],
@@ -18055,6 +18057,7 @@ p.wpx-title{display:flex!important;align-items:center;gap:12px;margin:0 0 12px!i
   }
 
   /* ================= 1. Mood board + fan-art gallery (per book) ================= */
+  function glDone() { try { if (currentTab === 'book' && window.bpRender) bpRender(); } catch (e) {} }
   function openGallery(i, tab) {
     var b = books[i]; if (!b) return;
     if (!idbOk()) { cuteAlert('Pictures need the browser\u2019s image storage, which is not available here 🍄'); return; }
@@ -18070,9 +18073,9 @@ p.wpx-title{display:flex!important;align-items:center;gap:12px;margin:0 0 12px!i
         + '<div class="b5-row"><button type="button" class="b5-alt" data-x="1">Done</button></div></div>';
     };
     ov.addEventListener('click', function (e) {
-      if (e.target === ov) { ov.remove(); return; }
+      if (e.target === ov) { ov.remove(); glDone(); return; }
       var t = e.target.closest('[data-tab],[data-del],[data-lb],[data-x]'); if (!t) return;
-      if (t.dataset.x != null) { ov.remove(); return; }
+      if (t.dataset.x != null) { ov.remove(); glDone(); return; }
       if (t.dataset.tab) { tab = t.dataset.tab; draw(); return; }
       if (t.dataset.del) { e.stopPropagation(); var p = t.dataset.del.split(':'), g = G(); (g[p[0]][id] || []).splice(+p[1], 1); if (!(g[p[0]][id] || []).length) delete g[p[0]][id]; SV(GK, g); draw(); return; }
       if (t.dataset.lb) lightbox(t.dataset.lb);
@@ -18797,6 +18800,12 @@ p.wpx-title{display:flex!important;align-items:center;gap:12px;margin:0 0 12px!i
 </script>
 
 <style id="b7-css">
+#tab-content-book .bp-keeps.n3{grid-template-columns:repeat(3,minmax(0,1fr))}
+@container (max-width:300px){#tab-content-book .rv-id .bp-keeps.n3{grid-template-columns:repeat(2,minmax(0,1fr))}#tab-content-book .rv-id .bp-keeps.n3 .bp-keep:last-child{grid-column:1/-1}}
+@media (max-width:420px){#tab-content-book .bp-keeps.n3{grid-template-columns:repeat(2,minmax(0,1fr))}#tab-content-book .bp-keeps.n3 .bp-keep:last-child{grid-column:1/-1}}
+#tab-content-book .rv-info .bp-keepcard .bp-keeps.n3{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+#tab-content-book .rv-info .bp-keepcard .bp-keeps.n3 .bp-keep:last-child{grid-column:auto}
+@media(min-width:1100px){#tab-content-book .rv-info .bp-keepcard .bp-keeps.n3{grid-template-columns:repeat(3,minmax(0,1fr))}}
 #pb-dock{position:fixed;bottom:8px;left:54px;z-index:45;display:flex;align-items:center;gap:6px;padding:5px 7px;background:rgba(255,255,255,.88);border:1px solid rgb(var(--c-e8c4c4));border-radius:999px;box-shadow:0 4px 14px rgba(0,0,0,.12);transition:left .35s cubic-bezier(.3,1.1,.4,1)}
 #pb-dock .dock-btn{width:28px;height:28px;font-size:15px;background:#fff;border:2px solid rgb(var(--c-e8c4c4));transition:transform .2s cubic-bezier(.3,1.6,.5,1)}
 #pb-dock .dock-btn:hover{transform:scale(1.15);border-color:rgb(var(--c-8a9a5b))}
