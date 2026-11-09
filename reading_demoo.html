@@ -6494,7 +6494,7 @@ body{padding-left:62px}
             u ? `<a class="bpx-link" href="${u}" target="_blank" rel="noopener noreferrer">\u{1F517} Open publishing link <span>\u2197</span></a>` : '',
             cards.length ? `<div class="bpx-bookgrid rv-cards">${cards.map((c, i) => `<div class="bpx-bc" style="--i:${i};--bg:${PAL[i % PAL.length][0]};--fg:${PAL[i % PAL.length][1]}"><i>${c[0]}</i><b>${c[1]}</b><span>${c[2]}</span>${c[3] ? `<small>${c[3]}</small>` : ''}</div>`).join('')}</div>` : ''
         ].filter(Boolean).join('');
-        out.push(`<div class="rv-head"><i class="bpx-sp s1">\u2726</i><i class="bpx-sp s2">\u2727</i><i class="bpx-sp s3">\u2726</i><div class="rv-left"><div class="rv-cover${!b.cover && !b.coverColor ? ' rv-cover-empty' : ''}" data-flip="cover" style="${cov}">${cvTxt}</div>${idHTML(b, 'rv-id')}</div><div class="rv-info">${right || '<p class="bp-empty">No book details yet \u{1F331}</p>'}</div></div>`);
+        out.push(`<div class="rv-head"><i class="bpx-sp s1">\u2726</i><i class="bpx-sp s2">\u2727</i><i class="bpx-sp s3">\u2726</i><div class="rv-left"><div class="rv-cover${!b.cover && !b.coverColor ? ' rv-cover-empty' : ''}" data-flip="cover" style="${cov}">${cvTxt}</div>${idHTML(b, 'rv-id', true)}</div><div class="rv-info">${right}<div class="bp-keepcard">${keepsHTML(b, true)}</div></div></div>`);
         // rereads card (added by the rereads feature) is kept as it was
         try { const m = bookMeta(b), k = m.indexOf('<div class="rr-card">'); if (k > -1) out.push(m.slice(k)); } catch (e) {}
 
@@ -6595,17 +6595,20 @@ body{padding-left:62px}
     }
     const BODY = { details: detailsTab, review: reviewTab, notes: notesTab, stats: statsTab };
     // title + author + buttons: under the big cover on Details, beside the small cover in the header elsewhere
-    function idHTML(b, cls) {
+    // the little keepsakes shelf; "rich" = the roomy card on the Details tab (each tile gets a one-line hint)
+    function keepsHTML(b, rich) {
+        const ref = bookRef(b), t = (cls, on, click, ic, nm, hint, title) => `<button type="button" class="bp-keep ${cls}${on ? ' on' : ''}" onclick="${click}"${cls === 'k1' ? ` aria-pressed="${!!on}"` : ''} title="${title}"><i aria-hidden="true">${ic}</i><span>${nm}${rich ? `<small>${hint}</small>` : ''}</span></button>`;
+        return `<div class="bp-keeps-h" aria-hidden="true"><span>\u2727 keepsakes \u2727</span></div><div class="bp-keeps" role="group" aria-label="Keepsakes for this book">`
+            + t('k1', b.favorite, `toggleFavorite(${ref});bpRender()`, b.favorite ? '\u{1F496}' : '\u{1F90D}', 'Favorite', b.favorite ? 'one of your faves' : 'tap to heart it', b.favorite ? 'Remove from favorites' : 'Add to favorites')
+            + (typeof downloadReviewCard === 'function' ? t('k2', 0, `downloadReviewCard(${ref})`, '\u{1F48C}', 'Review card', 'a picture of your review', 'Download a review card picture') : '')
+            + t('k3', 0, `openTradingCard(${ref})`, '\u{1F0CF}', 'Trading card', 'its collectible card', "Open this book's trading card")
+            + t('k4', 0, `openGallery(${ref})`, '\u{1F3A8}', 'Mood board', 'pictures &amp; fan art', 'Mood board &amp; fan art') + '</div>';
+    }
+    function idHTML(b, cls, noKeeps) {
         const ref = bookRef(b);
         return `<div class="${cls}" style="min-width:0"><h3 class="bk-title font-serif font-bold text-[rgb(var(--c-3e4a3d))]" data-flip="title">${E(b.title)}</h3>
             ${authorsOf(b).length ? `<p class="bp-au text-[11px] text-[rgb(var(--c-6b705c))] italic" data-flip="author">by ${authorLinks(b)}</p>` : ''}
-            <div class="bp-acts" data-flip="acts"><button type="button" class="bp-act pri bp-edit" onclick="openReviewModal(${ref})"><span aria-hidden="true">\u270E</span> Edit book</button>
-            <div class="bp-keeps-h" aria-hidden="true"><span>\u2727 keepsakes \u2727</span></div>
-            <div class="bp-keeps" role="group" aria-label="Keepsakes for this book">
-            <button type="button" class="bp-keep k1${b.favorite ? ' on' : ''}" onclick="toggleFavorite(${ref});bpRender()" aria-pressed="${!!b.favorite}" title="${b.favorite ? 'Remove from favorites' : 'Add to favorites'}"><i aria-hidden="true">${b.favorite ? '\u{1F496}' : '\u{1F90D}'}</i><span>Favorite</span></button>
-            ${typeof downloadReviewCard === 'function' ? `<button type="button" class="bp-keep k2" onclick="downloadReviewCard(${ref})" title="Download a review card picture"><i aria-hidden="true">\u{1F48C}</i><span>Review card</span></button>` : ''}
-            <button type="button" class="bp-keep k3" onclick="openTradingCard(${ref})" title="Open this book's trading card"><i aria-hidden="true">\u{1F0CF}</i><span>Trading card</span></button>
-            <button type="button" class="bp-keep k4" onclick="openGallery(${ref})" title="Mood board &amp; fan art"><i aria-hidden="true">\u{1F3A8}</i><span>Mood board</span></button></div></div></div>`;
+            <div class="bp-acts" data-flip="acts"><button type="button" class="bp-act pri bp-edit" onclick="openReviewModal(${ref})"><span aria-hidden="true">\u270E</span> Edit book</button>${noKeeps ? '' : keepsHTML(b)}</div></div>`;
     }
 
     function render() {
@@ -11357,7 +11360,7 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
     [['#tab-content-alltime'], 'alltime', `All-Time Bracket 🏆`, 'Just for fun', `<p>A tournament between <b>every book you have finished</b>. Each duel shows two books: <b>tap the one you prefer</b>. Winners move on through the quarter-finals and semi-finals until one is crowned your <b>all-time favourite</b>.</p><ul><li>The podium shows 🥇 🥈 🥉</li><li><b>Redraw with current books</b> starts a fresh bracket (your picks are cleared)</li><li>Year in Review has the same bracket for a single year</li></ul>`],
     ],
     'book': [
-    [['#bp-root', '#tab-content-book'], null, `A book's own page 🌸`, 'Book page', `<p>Open a finished book to get its own page. Under the cover, <b>✎ Edit book</b> opens the edit window, and the little <b>✧ keepsakes ✧</b> shelf holds 💖 <b>Favorite</b>, 💌 <b>Review card</b> (a picture of your review), 🃏 <b>Trading card</b> (a collectible card whose rarity comes from your rating; they are all collected in the 📒 Card Binder) and 🎨 <b>Mood board</b> (with your fan art). <b>🌸 Details</b> shows the big cover, rating, tags, vibes and warnings and the series pop-out; <b>✍️ Review &amp; Notes</b> holds your review, feelings and quotes; <b>📊 Stats</b> shows how long it took and your reading pace. <b>← Back</b> returns to where you were.</p>`],
+    [['#bp-root', '#tab-content-book'], null, `A book's own page 🌸`, 'Book page', `<p>Open a finished book to get its own page. Under the cover, <b>✎ Edit book</b> opens the edit window. On <b>Details</b> the <b>✧ keepsakes ✧</b> card sits on the right next to the dates and pages (on the other tabs it is a small shelf under the cover). It holds 💖 <b>Favorite</b>, 💌 <b>Review card</b> (a picture of your review), 🃏 <b>Trading card</b> (a collectible card whose rarity comes from your rating; they are all collected in the 📒 Card Binder) and 🎨 <b>Mood board</b> (with your fan art). <b>🌸 Details</b> shows the big cover, rating, tags, vibes and warnings and the series pop-out; <b>✍️ Review &amp; Notes</b> holds your review, feelings and quotes; <b>📊 Stats</b> shows how long it took and your reading pace. <b>← Back</b> returns to where you were.</p>`],
     ],
     'year': [
     [['#year-select', '#year-content'], 'year', `Year in Review 📊 (1/7)`, 'Stats', `<p>Pick a year at the top. The header is your <b>Reading Wrapped</b>: books finished, time, pages and streak, with a little title for the kind of reader you are. Sub-pages sit underneath: <b>🌟 Highlights, 📚 Bookshelf, ⏱️ Habits, 💗 Taste</b>, 🏆 Ranking, <b>🌗 Rhythm</b> and <b>⚖️ Compare</b>. Your all-time stats and medals now live in their own <b>♾️ Lifetime</b> tab (the ♾️ button at the bottom-left).</p>`, null, year('hi')],
@@ -18006,6 +18009,17 @@ p.wpx-title{display:flex!important;align-items:center;gap:12px;margin:0 0 12px!i
 #tab-content-binder .bn-empty span{display:block;font-size:30px;font-style:normal;margin-bottom:8px}
 @media (max-width:520px){#tab-content-binder .bn-book{padding:9px}#tab-content-binder .bn-page{gap:6px;padding:9px 9px 22px}}
 @media (prefers-reduced-motion:reduce){#tab-content-binder .bn-badge,#tab-content-binder .bn-pk.r-legendary.in::before,#tab-content-binder .bn-ph{animation:none}#tab-content-binder .bn-pk{transition:none}}
+
+/* Details tab: keepsakes live in the right column as a roomy card */
+#tab-content-book .rv-info .bp-keepcard{padding:12px 14px 14px;border-radius:20px;background:linear-gradient(160deg,rgba(255,255,255,.92),rgb(var(--c-fdf6f7)));border:2px dashed rgb(var(--c-f0c9d4));box-shadow:0 8px 18px -16px rgb(var(--c-a8506a)/.7)}
+#tab-content-book .rv-info .bp-keepcard .bp-keeps-h{margin:0 2px 10px;font-size:12px}
+#tab-content-book .rv-info .bp-keepcard .bp-keeps{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px}
+#tab-content-book .rv-info .bp-keepcard .bp-keep{flex-direction:row;justify-content:flex-start;gap:10px;padding:10px 12px;border-radius:18px;text-align:left}
+#tab-content-book .rv-info .bp-keepcard .bp-keep i{flex:none;width:38px;height:38px;font-size:18px}
+#tab-content-book .rv-info .bp-keepcard .bp-keep span{text-align:left;font-size:11.5px;min-width:0;flex:1;word-break:normal;overflow-wrap:normal}
+#tab-content-book .rv-info .bp-keepcard .bp-keep small{display:block;margin-top:2px;font:italic 600 10px 'Playfair Display',serif;color:rgb(var(--c-6b705c))}
+@media(min-width:1100px){#tab-content-book .rv-info .bp-keepcard .bp-keeps{grid-template-columns:repeat(4,minmax(0,1fr))}#tab-content-book .rv-info .bp-keepcard .bp-keep{flex-direction:column;align-items:center;text-align:center;padding:12px 6px 10px}#tab-content-book .rv-info .bp-keepcard .bp-keep span{text-align:center}}
+@media(max-width:380px){#tab-content-book .rv-info .bp-keepcard .bp-keeps{grid-template-columns:1fr}}
 </style>
 <script type="text/plain" data-app id="b5-js">
 (function () {
@@ -18182,7 +18196,8 @@ p.wpx-title{display:flex!important;align-items:center;gap:12px;margin:0 0 12px!i
   }
   var host2 = $('tab-content-favorites').parentNode;
   host2.insertAdjacentHTML('beforeend', '<div id="tab-content-binder" class="hidden flex-1 flex flex-col"><div class="bn-hero" id="bn-hero"></div><div class="bn-filt" id="bn-filt" role="group" aria-label="Show cards by rarity"></div><div class="bn-wrap" id="bn-wrap"></div><div class="bn-nav" id="bn-nav"></div></div>');
-  if (dock) { var dbb = document.createElement('button'); dbb.className = 'dock-btn'; dbb.dataset.tab = 'binder'; dbb.title = 'Card Binder'; dbb.setAttribute('aria-label', 'Card Binder'); dbb.innerHTML = '📒<em class="dock-label">Card Binder</em>'; dbb.onclick = function () { switchTab('binder'); }; dock.appendChild(dbb); }
+  var bnDock = $('side-dock');
+  if (bnDock) { var dbb = document.createElement('button'); dbb.className = 'dock-btn'; dbb.dataset.tab = 'binder'; dbb.title = 'Card Binder'; dbb.setAttribute('aria-label', 'Card Binder'); dbb.innerHTML = '📒<em class="dock-label">Card Binder</em>'; dbb.onclick = function () { switchTab('binder'); }; bnDock.appendChild(dbb); }
   function bnRender() {
     var wrap = $('bn-wrap'); if (!wrap) return;
     var all = fin().slice().sort(function (p, q) { return String(p.finishedAt || '') < String(q.finishedAt || '') ? -1 : 1; });
