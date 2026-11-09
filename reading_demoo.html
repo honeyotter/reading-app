@@ -1948,7 +1948,7 @@ function authorLinks(b) { return authorsOf(b).map(n => `<button type="button" da
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveBooks(); });
     window.addEventListener('pagehide', () => saveBooks());
     if (window.__coversMigrated) { saveBooks(); window.__coversMigrated = false; }
-    setTimeout(() => { try { if (IDBC() && books.length) CoverDB.sweep(new Set(books.map(b => b.coverKey).filter(Boolean))); } catch (e) {} }, 8000);
+    setTimeout(() => { try { if (IDBC() && books.length) CoverDB.sweep(new Set(books.map(b => b.coverKey).filter(Boolean).concat(window.extraImageKeys ? extraImageKeys() : []))); } catch (e) {} }, 8000);
     let currentTab = 'backlog';
     let currentFilter = 'unread';
     let searchQuery = '';
@@ -4678,7 +4678,7 @@ window.SAFE = SAFE;
 
         <div class="flex flex-col gap-1">
             <button onclick="downloadBackup()" class="w-full py-2 rounded-lg bg-[rgb(var(--c-8a9a5b))] text-white text-xs font-bold">⬇️ Download backup (.json)</button>
-            <label class="flex items-center gap-1.5 text-[11px] text-[rgb(var(--c-3e4a3d))] font-bold"><input type="checkbox" id="backup-covers" checked> Include cover images (full quality, bigger file)</label>
+            <label class="flex items-center gap-1.5 text-[11px] text-[rgb(var(--c-3e4a3d))] font-bold"><input type="checkbox" id="backup-covers" checked> Include cover &amp; gallery images (full quality, bigger file)</label>
             <p class="text-[10px] text-[rgb(var(--c-6b705c))]">Your whole library: books, reviews, sessions, streak, goals and settings.</p>
         </div>
 
@@ -4776,7 +4776,7 @@ window.SAFE = SAFE;
                     const head = JSON.stringify({ app: APP, version: 2, exportedAt: new Date().toISOString(), bookCount: books.length, data });
                     const parts = [head.slice(0, -1) + ',"covers":['];
                     if (withCovers) {
-                        const [thumbs, fulls] = await CoverDB.allCovers(), fm = new Map(fulls.map(r => [r.id, r.blob])), used = new Set(books.map(b => b.coverKey).filter(Boolean));
+                        const [thumbs, fulls] = await CoverDB.allCovers(), fm = new Map(fulls.map(r => [r.id, r.blob])), used = new Set(books.map(b => b.coverKey).filter(Boolean).concat(window.extraImageKeys ? extraImageKeys() : []));
                         let n = 0;
                         for (const t of thumbs) {
                             const f = fm.get(t.id); if (!f || !used.has(t.id)) continue;
@@ -6603,7 +6603,8 @@ body{padding-left:62px}
             ${authorsOf(b).length ? `<p class="bp-au text-[11px] text-[rgb(var(--c-6b705c))] italic" data-flip="author">by ${authorLinks(b)}</p>` : ''}
             <div class="bp-acts" data-flip="acts"><button type="button" class="bp-act pri" onclick="openReviewModal(${ref})">\u270E Edit</button>
             <button type="button" class="bp-act" onclick="toggleFavorite(${ref});bpRender()">${b.favorite ? '\u{1F496}' : '\u{1F90D}'} Favorite</button>
-            ${typeof downloadReviewCard === 'function' ? `<button type="button" class="bp-act" onclick="downloadReviewCard(${ref})">\u2B07\uFE0F Review card</button>` : ''}</div></div>`;
+            ${typeof downloadReviewCard === 'function' ? `<button type="button" class="bp-act" onclick="downloadReviewCard(${ref})">\u2B07\uFE0F Review card</button>` : ''}
+            <button type="button" class="bp-act" onclick="openTradingCard(${ref})">\u{1F0CF} Trading card</button><button type="button" class="bp-act" onclick="openGallery(${ref})">\u{1F3A8} Mood board &amp; fan art</button></div></div>`;
     }
 
     function render() {
@@ -11227,7 +11228,7 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
     [null, null, `Explicit content 🔞`, 'Welcome', `<p>Some tags, warnings and kinks are for <b>grown-ups only</b> (explicit and 18+). You can keep them out of sight so your garden stays cozy and safe.</p><p>Nothing is deleted: safe mode only hides them, and you can switch it any time in <b>⚙️ settings</b>.</p>`, 'safe'],
     [['#levi-buddy'], null, `Meet chibi Levi 🧍`, 'Welcome', `<p>A tiny chibi Levi can keep you company in the bottom-right corner while you read and plan. He is purely decorative: he never blocks clicks and he does not get in the way of anything.</p>`, 'levi'],
     [['#col-left'], 'backlog', `Your home panel 🌿`, 'Essentials', `<p>The left column is your <b>dashboard</b> and updates live as you read:</p><ul><li>🌷 <b>Progress Garden</b> – one flower per finished book, and the <b>goal ring</b> for today's minutes</li><li>📌 <b>Next up</b>, 🔥 <b>Reading streak</b>, 🎀 <b>Quest Board</b> (stars grow Pip and buy 🛍️ garden decorations; there are 🤫 secret quests too), 🎲 <b>Reading dare</b>, 🎡 <b>TBR Roulette</b>, 🔮 <b>Whisper me some recs</b>, 🎃 <b>Seasonal events</b>, ✨ <b>Fairy Whisper</b> and 📖 <b>Word of the day</b></li><li>💾 <b>Back up</b>, <b>Restore</b> and <b>Reset</b> at the bottom</li></ul><p>The <b>❓ Quick tour</b> at the top of this panel walks through every card.</p>`],
-    [tabs, null, `Tabs and docks 🧭`, 'Essentials', `<ul><li>The tab bar along the top: 📜 <b>TBR</b> (books to read), 🗓️ <b>Weekly Path</b> (your schedule), ✨ <b>Finished</b> (reviews and ratings), 📚 <b>Library</b> (every unread book you own), 🔮 <b>Future Chapters</b>, 📖 <b>Reading Now</b>, 📊 <b>Year in Review</b>, 🌙 <b>Monthly Recap</b>, 🕰️ <b>Sessions</b>, 🪦 <b>Graveyard</b> and 💖 <b>Favorites</b>. Scroll it sideways if it does not all fit; the numbers count the books in each. It stays pinned at the top while you scroll.</li><li>The <b>docks</b> on the screen edges hold shortcuts (hover an icon for its name). <b>Right:</b> 🕰️ Sessions, 💖 Favorites, 🎵 Book Soundtrack, 🏆 All-Time Bracket, 📚 Bookshelf, ❝ Quotes, 🗓️ Coming Soon (release countdowns). <b>Left:</b> 🔮 Future Chapters, 📊 Year in Review, 🌙 Monthly Recap, 📚 Series Tracker, 🪦 Graveyard, 🧹 Tidy duplicates.</li><li>↶ ↷ at the top right <b>undo and redo</b> your changes (Ctrl/⌘ + Z).</li></ul><p>Every tab and dock page has its own <b>❓ Quick tour</b>.</p>`],
+    [tabs, null, `Tabs and docks 🧭`, 'Essentials', `<ul><li>The tab bar along the top: 📜 <b>TBR</b> (books to read), 🗓️ <b>Weekly Path</b> (your schedule), ✨ <b>Finished</b> (reviews and ratings), 📚 <b>Library</b> (every unread book you own), 🔮 <b>Future Chapters</b>, 📖 <b>Reading Now</b>, 📊 <b>Year in Review</b>, 🌙 <b>Monthly Recap</b>, 🕰️ <b>Sessions</b>, 🪦 <b>Graveyard</b> and 💖 <b>Favorites</b>. Scroll it sideways if it does not all fit; the numbers count the books in each. It stays pinned at the top while you scroll.</li><li>The <b>docks</b> on the screen edges hold shortcuts (hover an icon for its name). <b>Right:</b> 🕰️ Sessions, 💖 Favorites, 🎵 Book Soundtrack, 🏆 All-Time Bracket, 📚 Bookshelf, ❝ Quotes, 🗓️ Coming Soon (release countdowns), 📕 Book Passport. <b>Left:</b> 🔮 Future Chapters, 📊 Year in Review, 🌙 Monthly Recap, 📚 Series Tracker, 🪦 Graveyard, 🧹 Tidy duplicates.</li><li>↶ ↷ at the top right <b>undo and redo</b> your changes (Ctrl/⌘ + Z).</li></ul><p>Every tab and dock page has its own <b>❓ Quick tour</b>.</p>`],
     [[up('#new-title', 1)], 'backlog', `Add a book: Plant 🌱`, 'Essentials', `<p>Type a title, enter how long it takes to read, then press <b>🌱 Plant</b>. The time powers your schedule, so a rough guess is fine.</p><ul><li><b>Tap a cover</b> in Covers view to open the book's edit panel</li><li>The whole TBR page scrolls, so the header slides away and your books get the room</li><li>🔮 <b>Scroll Sorcery</b> (Bulk add, Shuffle, From graveyard), 🪄 <b>Quick Enchant</b>, 🎀 <b>Filters</b>, search, the month pages and the List / Grid / Covers views are all in the TBR's <b>❓ Quick tour</b></li></ul>`],
     [[box('#review-modal')], null, `Edit and review a book ✎`, 'Essentials', `<p>Open any book with <b>✎ / Edit details</b>, or by tapping its cover in the TBR's Covers view.</p><ul><li>🌸 <b>Basics</b>: cover, title, authors, pages, fandoms, pairings, link and dates</li>{{AO3}}<li>🏷️ <b>Tags &amp; series</b>: tags, warnings and vibes</li><li>✍️ <b>Rate &amp; review</b>: <b>fairy ratings</b> (tap a dot, 1 to 5, per category), 😢 tears, character and ship ratings, thoughts, feelings and mood, highlights</li><li>🎵 <b>Extras</b>: scenes, theories, best / weakest, quotes, songs, the 🌳 family tree and a 📓 book journal with prompts</li></ul><p>The <b>❓ Quick tour</b> in this window's header explains every tab.</p>`, null, hookReview(false, false)],
     [[up('#start-date', 3)], 'schedule', `Plan your reading 🗓️`, 'Essentials', `<p>Tell the app <b>when you start</b> and either a <b>target date</b> or your <b>daily minutes</b>, then press <b>Weave</b>. It builds a day-by-day trail from your backlog, with optional rest days and different minutes for each weekday.</p><p>📌 <b>Lock a book to a week</b> for a book club or event, and add 🏖️ <b>vacation days</b> that the plan skips without breaking your streak.</p>`],
@@ -11295,6 +11296,9 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
     [['#now-content', '#tab-content-now'], 'now', `Reading Now 📖`, 'Reading Now', `<p>One full card for <b>every book you are reading</b>.</p><ul><li>Progress, time and pages (✎ to fix them), speed and a <b>finish estimate</b></li><li><b>Log</b> minutes and pages</li><li><b>🔖 Bookmark</b> and <b>📝 Page notes</b></li><li><b>🌱 First impressions</b> and <b>🔮 Theories &amp; predictions</b></li><li><b>🕰️ Timeline</b> for that book</li></ul><p>Reading a second book too? Log pages on it in the TBR and it gets its own card. Sessions feed your goal ring, streak, heatmap and each book's progress.</p>`],
     [['.nl-later', '#nl-shelf', '#now-content'], 'now', `🌙 Save for later`, 'Reading Now', `<p>Started a book that your plan puts later in the year? Press <b>🌙 Save for later</b> on its card. It keeps its progress and its place in your plan, it is not DNF'd, and it leaves Reading Now. It waits in the <b>🌙 Saved for later</b> list at the bottom and comes back on its own once your plan reaches it, or press <b>↩ Read now</b>.</p><p>After you log, a little <b>📍 Where did you read?</b> bubble lets you tap your spot (or add your own). Set a <b>reading limit</b> in ⚙️ Settings → Reading Now, and you get a gentle nudge when you open more books than that. The status menu on a TBR card also has 🌙 Saved for later.</p>`],
     ],
+    'passport': [
+    [['#ppx-page', '#tab-content-passport'], 'passport', `Book Passport 📕`, 'Just for fun', `<p>A real-looking passport for your reading travels. Press <b>OPEN ▸</b> on the cover.</p><ul><li><b>Identity page</b> – tap 📷 to add your own photo, then fill in your name, birthday, pronouns, hometown, nationality and favourite genre, and sign it. The machine-readable lines at the bottom update as you type</li><li><b>Visa pages</b> – one per fandom, with its own ink stamp (books, first visit and year) and the covers of every book you read there, in a sepia tint (hover to see the colour, tap to open the book)</li><li><b>🧳 Travel log</b> – every realm you have visited</li></ul><p>Use ◀ ▶ (or the arrow keys) and the chips at the top to jump to a fandom.</p>`],
+    ],
     'soon': [
     [['#cs-hero', '#tab-content-soon'], 'soon', `Coming Soon 🗓️`, 'Planning', `<p>Books you are waiting for, each with a <b>countdown</b> to release day. The chips count what is on the way, the next release and what is already out. On release day you get a little 🎉 hello.</p>`],
     [['#cs-form'], 'soon', `Add a release`, 'Planning', `<p>Type the title, author and release date (plus an optional note such as the series, and a link), then <b>🗓️ Add release</b>. ✎ edits a card and 🗑 removes it.</p><p><b>🌱 Add to TBR</b> plants it at the end of your plan, and <b>📚 Library</b> keeps it in your Library. Either way it starts with a 6h reading-time guess you can change.</p>`],
@@ -11311,6 +11315,7 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
     [['#hl-box'], null, `Rate & review: highlights & quotes`, 'Editing a book', `<ul><li>❝ <b>Highlights &amp; Quotes</b> – add lines you loved, tap any to edit, and tap the 💖 to send it to your <b>Quote Collection</b>. <b>🍎 Import from Apple Books</b> pastes in your Apple Books notes and sorts them out for you.</li></ul><p>Press <b>Save Reflection</b> when you are done.</p>`, null, hookReview('review')],
     [['#mx-rv'], null, `Review window: 🎵 Extras (1/3)`, 'Editing a book', `<ul><li>🌿 <b>Go deeper</b> – 🔁 <b>Would I reread it?</b> with a <b>When?</b> note, 🎬 <b>Favorite scenes</b>, 🌱 <b>First impressions</b> (written before page one), 🔮 <b>Theories</b> you can revisit, and the 🌳 family tree</li><li>⚖️ <b>Best, weakest &amp; what I'd change</b></li><li>❝ <b>Quotes</b> – one per line</li><li>🎵 <b>Songs that represent this book</b> – paste an Apple Music link or just search for a song, and <b>＋ Add another song</b> as often as you like. They all land on the Book Soundtrack.</li></ul><p>The finished-book review cards show these too.</p>`, null, hookReview('extras')],
     [['#jn-card'], null, `Extras: 📓 book journal (2/3)`, 'Editing a book', `<p>A journal that goes beyond the review. Tap <b>🎲 Give me a prompt</b> (“Write a letter to the main character”, “Rewrite a scene from another point of view”… there are 40), write, and press <b>💾 Add entry</b>. Entries are dated; ✎ edits and ✕ removes them. Press <b>Save Reflection</b> to keep them.</p>`, null, hookReview('extras')],
+    [['#gl-card'], null, `Extras: 🎨 pictures & cards`, 'Editing a book', `<ul><li><b>🎨 Mood board</b> – pin pictures that feel like the book; they become a taped collage wall (tap one to see it big)</li><li><b>🖌️ Fan art</b> – keep fan art in little gilded frames with its title and the artist's credit</li><li><b>🃏 Trading card</b> – a collectible card with the cover, stats, tags and a quote, saved as a picture</li></ul><p>In the 🖼️ button next to each highlight you can also make a quote card.</p>`, null, hookReview('extras')],
     [['#mx-fm'], null, `Extras: 🌳 family tree and characters (3/3)`, 'Editing a book', `<p>🌳 <b>Family tree</b> keeps a book's characters and how they relate.</p><ul><li>Add a character, then draw relationships between them; names are grouped by <b>house</b> and each relationship has its own coloured line</li><li><b>Zoom</b> and <b>drag</b> to pan around a big tree</li><li>☆ <b>Star</b> a character to add them to your favorite characters</li><li>A small badge shows <b>how many books</b> a character appears in</li></ul><p>Characters you add here also fill the <b>Characters</b> filter in the TBR.</p>`, null, hookTree],
     ],
     'lib': [
@@ -11329,7 +11334,7 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
     [['#tab-content-alltime'], 'alltime', `All-Time Bracket 🏆`, 'Just for fun', `<p>A tournament between <b>every book you have finished</b>. Each duel shows two books: <b>tap the one you prefer</b>. Winners move on through the quarter-finals and semi-finals until one is crowned your <b>all-time favourite</b>.</p><ul><li>The podium shows 🥇 🥈 🥉</li><li><b>Redraw with current books</b> starts a fresh bracket (your picks are cleared)</li><li>Year in Review has the same bracket for a single year</li></ul>`],
     ],
     'book': [
-    [['#bp-root', '#tab-content-book'], null, `A book's own page 🌸`, 'Book page', `<p>Open a finished book to get its own page. <b>🌸 Details</b> shows the big cover, rating, tags, vibes and warnings and the series pop-out; <b>✍️ Review &amp; Notes</b> holds your review, feelings and quotes; <b>📊 Stats</b> shows how long it took and your reading pace. <b>← Back</b> returns to where you were.</p>`],
+    [['#bp-root', '#tab-content-book'], null, `A book's own page 🌸`, 'Book page', `<p>Open a finished book to get its own page. Its buttons include <b>🃏 Trading card</b> (a collectible card whose rarity comes from your rating, saved as a picture) and <b>🎨 Mood board &amp; fan art</b>. <b>🌸 Details</b> shows the big cover, rating, tags, vibes and warnings and the series pop-out; <b>✍️ Review &amp; Notes</b> holds your review, feelings and quotes; <b>📊 Stats</b> shows how long it took and your reading pace. <b>← Back</b> returns to where you were.</p>`],
     ],
     'year': [
     [['#year-select', '#year-content'], 'year', `Year in Review 📊 (1/9)`, 'Stats', `<p>Pick a year at the top. The header is your <b>Reading Wrapped</b>: books finished, time, pages and streak, with a little title for the kind of reader you are. Sub-pages sit underneath: <b>🌟 Highlights, 📚 Bookshelf, ⏱️ Habits, 💗 Taste</b>, 🏆 Ranking, and <b>🌗 Rhythm, ⚖️ Compare, ♾️ Lifetime, 🏅 Achievements</b>.</p>`, null, year('hi')],
@@ -11356,7 +11361,7 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
     [['#favorites-content'], 'favorites', `Favorites 💖`, 'Library', `<p>Your favorite books on a wooden shelf. Tap a cover for details, or 💔 to take it off the shelf.</p><ul><li>🧚 <b>Favorite characters</b> – star them in a book's character list, or <b>＋ Add</b> one here. Tap a character to see their page, with their 🧚 profile (look, personality, favourite moments) and your average ★ rating</li><li>🌟 <b>Recurring cast</b> – characters who show up in more than one book</li></ul>`],
     ],
     'quotes': [
-    [['#tab-content-quotes'], 'quotes', `Quotes ❝`, 'Library', `<p>The <b>Quote Collection</b> gathers every 💖 highlight from every book, with a running count. Add or import highlights (including <b>from Apple Books</b>) inside a book's review, then tap the heart.</p>`],
+    [['#tab-content-quotes'], 'quotes', `Quotes ❝`, 'Library', `<p>The <b>Quote Collection</b> gathers every 💖 highlight from every book, with a running count. Add or import highlights (including <b>from Apple Books</b>) inside a book's review, then tap the heart. Every quote card has a <b>🖼️ Card</b> button that turns the line into a pretty square picture, in your theme or in Blush, Sage, Night or Parchment.</p>`],
     ],
     'soundtrack': [
     [['#soundtrack-content'], 'soundtrack', `Book Soundtrack 🎵`, 'Library', `<p>Every song you attached to a book, gathered in one place, so you can build a playlist for your reading life.</p>`],
@@ -11388,7 +11393,7 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
     [['#st-s-covers-and-storage'], 'settings', `Covers & storage 🖼️`, 'Settings', `<p>Choose the cover quality and see how much browser space your covers use. Big libraries with full-quality covers take more room.</p>`],
     [['#st-s-fill-in-missing-info'], 'settings', `Fill in missing info 🩹`, 'Settings', `<p>Upload a CSV of books you already have and only the <b>empty</b> spots are filled (author, publisher, year, pages, link). You review every change in a table first, and one ↶ undo reverts it.</p>`],
     [['#ibk-sec'], 'settings', `Import new books 📥`, 'Settings', `<p>Found a CSV of books that are not in your library yet? Press <b>Choose CSV…</b> to add them.</p><ul><li>Books you already have, and repeats inside the file, are skipped. Wishlist books stay out unless you tick them in</li><li><b>Spread evenly through my backlog</b> slots the new books in between your existing ones in a <b>Long → Short → Medium</b> pattern (pick another order if you like)</li><li><b>Start spreading evenly after…</b> lets you choose the book the spreading begins after. Books before it stay exactly where they are. Type in the search box to find it fast</li><li>Or send them all to the <b>top</b> or <b>end</b> of the backlog instead</li><li>Tick <b>Also re-sort my existing unread books</b> if your current backlog does not follow the pattern yet</li><li>The bookshelf preview shows your backlog <b>now</b> and <b>after</b>. 🌷 short, 🍃 medium and 🔮 long have their own colours, new books wear a gold 🎀 ribbon, and 📍 marks the book you chose. 🎲 <b>Reshuffle</b> tries another random spread</li></ul><p>Nothing changes until you press <b>Add books</b>, and <b>↩ Undo import</b> reverses it.</p>`],
-    [['#st-s-backup'], 'settings', `Backup 💾`, 'Settings', `<p>Your library lives <b>only in this browser</b>, so keep a copy:</p><ul><li><b>⬇️ Download backup (.json)</b> saves everything: books, reviews, sessions, streak, goals and settings (tick <b>Include cover images</b> for full-quality covers)</li><li><b>⬆️ Restore from backup…</b> replaces what is in the app with a backup file</li><li><b>📄 Export books as CSV</b> uses Goodreads-style columns for StoryGraph or Goodreads</li></ul><p>The 💾 chip in the pink header (and a dot on the ⚙) remind you when it has been more than two weeks.</p>`],
+    [['#st-s-backup'], 'settings', `Backup 💾`, 'Settings', `<p>Your library lives <b>only in this browser</b>, so keep a copy:</p><ul><li><b>⬇️ Download backup (.json)</b> saves everything: books, reviews, sessions, streak, goals and settings (tick <b>Include cover &amp; gallery images</b> for full-quality covers)</li><li><b>⬆️ Restore from backup…</b> replaces what is in the app with a backup file</li><li><b>📄 Export books as CSV</b> uses Goodreads-style columns for StoryGraph or Goodreads</li></ul><p>The 💾 chip in the pink header (and a dot on the ⚙) remind you when it has been more than two weeks.</p>`],
     ],
   };
 
@@ -11451,7 +11456,7 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
   purgeDemo();   /* clears leftovers if the page was closed in the middle of a tour */
 
   var i = 0, hl, card, blk, open = false, run = MAIN, runKey = 'main', origTab = null, keepDemo = false;
-  var TABKEYS = ['backlog', 'schedule', 'reviews', 'soon', 'lib', 'future', 'alltime', 'tagmgr', 'now', 'year', 'month', 'sessions', 'abandoned', 'favorites', 'quotes', 'soundtrack', 'shelf', 'series', 'settings'];
+  var TABKEYS = ['backlog', 'schedule', 'reviews', 'soon', 'passport', 'lib', 'future', 'alltime', 'tagmgr', 'now', 'year', 'month', 'sessions', 'abandoned', 'favorites', 'quotes', 'soundtrack', 'shelf', 'series', 'settings'];
   function curTab() { for (var n = 0; n < TABKEYS.length; n++) { var c = $q('#tab-content-' + TABKEYS[n]); if (c && !c.classList.contains('hidden')) return TABKEYS[n]; } return null; }
   function cur() { return run.filter(function (s) { return s[5] !== 'ao' || ao(); }); }
   function done() { try { localStorage.setItem(KEY, '1'); } catch (e) {} }
@@ -11515,7 +11520,7 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
   function setMini(yes) { try { localStorage.setItem(MK, yes ? 'yes' : 'no'); } catch (e) {} document.body.classList.toggle('no-mini', !yes); }
   window.setMini = setMini;
   document.body.classList.toggle('no-mini', !miniOn());
-  var TABHOSTS = [['home', '#col-left', 'the home panel'], ['lib', '#tab-content-lib', 'the Library'], ['future', '#tab-content-future', 'Future Chapters'], ['alltime', '#tab-content-alltime', 'the All-Time Bracket'], ['book', '#tab-content-book', 'the book page'], ['tagmgr', '#tab-content-tagmgr', 'the Tag manager'], ['backlog', '#tab-content-backlog', 'the TBR'], ['schedule', '#tab-content-schedule', 'the Weekly Path'], ['reviews', '#tab-content-reviews', 'Finished books'], ['now', '#tab-content-now', 'Reading Now'], ['year', '#tab-content-year', 'Year in Review'], ['month', '#tab-content-month', 'Monthly Recap'], ['sessions', '#tab-content-sessions', 'Sessions'], ['abandoned', '#tab-content-abandoned', 'the Graveyard'], ['favorites', '#tab-content-favorites', 'Favorites'], ['quotes', '#tab-content-quotes', 'Quotes'], ['soundtrack', '#tab-content-soundtrack', 'the Book Soundtrack'], ['soon', '#tab-content-soon', 'Coming Soon'], ['shelf', '#tab-content-shelf', 'the Bookshelf'], ['series', '#tab-content-series', 'the Series Tracker'], ['settings', '#tab-content-settings', 'Settings']];
+  var TABHOSTS = [['home', '#col-left', 'the home panel'], ['lib', '#tab-content-lib', 'the Library'], ['future', '#tab-content-future', 'Future Chapters'], ['alltime', '#tab-content-alltime', 'the All-Time Bracket'], ['book', '#tab-content-book', 'the book page'], ['tagmgr', '#tab-content-tagmgr', 'the Tag manager'], ['backlog', '#tab-content-backlog', 'the TBR'], ['schedule', '#tab-content-schedule', 'the Weekly Path'], ['reviews', '#tab-content-reviews', 'Finished books'], ['now', '#tab-content-now', 'Reading Now'], ['year', '#tab-content-year', 'Year in Review'], ['month', '#tab-content-month', 'Monthly Recap'], ['sessions', '#tab-content-sessions', 'Sessions'], ['abandoned', '#tab-content-abandoned', 'the Graveyard'], ['favorites', '#tab-content-favorites', 'Favorites'], ['quotes', '#tab-content-quotes', 'Quotes'], ['soundtrack', '#tab-content-soundtrack', 'the Book Soundtrack'], ['soon', '#tab-content-soon', 'Coming Soon'], ['passport', '#tab-content-passport', 'the Book Passport'], ['shelf', '#tab-content-shelf', 'the Bookshelf'], ['series', '#tab-content-series', 'the Series Tracker'], ['settings', '#tab-content-settings', 'Settings']];
   var HEADHOSTS = [['edit', function () { var t = $q('#modal-book-title'); return t && t.parentElement; }, 'the edit window'], ['dups', function () { return $q('#dup-modal .dup-head'); }, 'Tidy duplicates']];
   function mkMini(k, label, inl) { var b = document.createElement('button'); b.type = 'button'; b.className = 'tourx-mini' + (inl ? ' inl' : ''); b.dataset.k = k; b.textContent = '❓ Quick tour'; b.title = 'Quick tour of ' + label; b.setAttribute('aria-label', 'Quick tour of ' + label); return b; }
   function placeMinis() {
@@ -12813,7 +12818,7 @@ div:has(>#tab-btn-backlog){flex-shrink:0}
       + '<div class="st-actions"><button type="button" class="st-btn" data-act="bk">⬇️ Download backup (.json)</button>'
       + '<label class="st-btn alt">⬆️ Restore from backup…<input type="file" accept=".json,application/json" class="st-file" data-act="restore"></label>'
       + '<button type="button" class="st-btn alt" data-act="csv">📄 Export books as CSV</button></div>'
-      + '<label class="st-chk"><input type="checkbox" id="st-bk-covers"' + (($('backup-covers') ? $('backup-covers').checked : true) ? ' checked' : '') + '> Include cover images (full quality, bigger file)</label>'
+      + '<label class="st-chk"><input type="checkbox" id="st-bk-covers"' + (($('backup-covers') ? $('backup-covers').checked : true) ? ' checked' : '') + '> Include cover &amp; gallery images (full quality, bigger file)</label>'
       + '<div class="st-t"><small>Restore replaces everything currently in the app with the contents of the backup file. The CSV uses Goodreads-style columns, so it can be imported into StoryGraph or Goodreads.</small></div>'
       + '<div class="st-msg" id="st-bk-msg" role="status" aria-live="polite"></div></div></section>'
 
@@ -17738,6 +17743,384 @@ p.wpx-title{display:flex!important;align-items:center;gap:12px;margin:0 0 12px!i
   setTimeout(function () { sleepy(); sqRow(); sqCheck(); dareCard(); wotdCard(); msCheck(); }, 1800);
   setInterval(sleepy, 10 * 60000);
   window.b4Refresh = function () { sleepy(); sqRow(); sqCheck(); dareCard(); wotdCard(); gardenDecoRefresh(); };
+})();
+</script>
+<style id="b5-css">
+/* ===== Batch 5: Book Passport, trading cards, quote cards, mood boards, fan-art galleries ===== */
+.b5-ov{position:fixed;inset:0;z-index:10045;background:rgb(var(--c-3e4a3d)/.4);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:14px}
+.b5-card{width:min(760px,100%);max-height:92vh;overflow:auto;padding:18px 20px;border-radius:26px;background:#fffdfb;border:2px solid rgb(var(--c-f4c9d2));box-shadow:0 20px 50px -20px rgb(var(--c-a8506a)/.6)}
+.b5-card h3{margin:0;font:800 19px 'Playfair Display',serif;color:rgb(var(--c-a8506a))}
+.b5-card>p.sub{margin:2px 0 12px;font:italic 600 11.5px 'Playfair Display',serif;color:rgb(var(--c-6b705c))}
+.b5-btn{padding:7px 15px;border-radius:99px;border:0;background:linear-gradient(90deg,rgb(var(--c-e8a0b4)),rgb(var(--c-a8506a)));color:#fff;font:800 11px Montserrat,sans-serif;cursor:pointer}
+.b5-btn.g{background:linear-gradient(90deg,rgb(var(--c-b5c78a)),rgb(var(--c-8a9a5b)))}
+.b5-alt{padding:7px 15px;border-radius:99px;border:1.5px solid rgb(var(--c-e8c4c4));background:#fff;color:rgb(var(--c-3e4a3d));font:800 11px Montserrat,sans-serif;cursor:pointer}
+.b5-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:flex-end;margin-top:12px}
+.b5-seg{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.b5-seg button{padding:5px 12px;border-radius:99px;border:1.5px solid rgb(var(--c-f0d0d8));background:#fff;font:800 10.5px Montserrat,sans-serif;color:rgb(var(--c-3e4a3d));cursor:pointer}
+.b5-seg button.on{background:rgb(var(--c-fdeef2));border-color:rgb(var(--c-e8a0b4));color:rgb(var(--c-a8506a))}
+.b5-cv{display:block;margin:0 auto;max-width:100%;height:auto;border-radius:18px;box-shadow:0 14px 30px -16px rgb(var(--c-3e4a3d)/.55)}
+.b5-cv.card{max-height:66vh;width:auto}.b5-cv.sq{max-height:62vh;width:auto}
+.b5-wait{padding:40px 10px;text-align:center;font:italic 600 13px 'Playfair Display',serif;color:rgb(var(--c-6b705c))}
+/* gallery */
+.gl-up{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:99px;border:1.5px dashed rgb(var(--c-e8a0b4));background:#fff;font:800 11px Montserrat,sans-serif;color:rgb(var(--c-a8506a));cursor:pointer}
+.gl-up input{display:none}
+.mb-wall{columns:3 150px;column-gap:12px;margin-top:12px;padding:14px;border-radius:20px;background:radial-gradient(rgb(var(--c-f0d0d8)/.5) 1px,transparent 1.5px) 0 0/14px 14px,rgb(var(--c-fdf6f7,253 246 247))}
+.mb-it{position:relative;break-inside:avoid;margin:0 0 12px;padding:7px 7px 18px;background:#fff;box-shadow:0 6px 14px -8px rgb(var(--c-3e4a3d)/.5);transform:rotate(var(--r));transition:transform .2s;cursor:zoom-in}
+.mb-it:hover{transform:rotate(0) scale(1.03);z-index:2}
+.mb-it img{display:block;width:100%;height:auto}
+.mb-it::before{content:'';position:absolute;top:-8px;left:50%;width:54px;height:16px;margin-left:-27px;background:rgb(var(--c-f7b6cc)/.7);transform:rotate(-4deg)}
+.mb-it:nth-child(3n)::before{background:rgb(var(--c-b5c78a)/.7)}.mb-it:nth-child(3n+1)::before{background:rgb(var(--c-e0b8c0)/.75)}
+.gl-x{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;border:0;background:rgba(255,255,255,.92);color:rgb(var(--c-a8506a));font:800 11px sans-serif;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.2);z-index:3}
+.fa-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;margin-top:12px}
+.fa-it{position:relative;padding:10px;border-radius:6px;background:linear-gradient(135deg,#d9b77a,#b88b4a);box-shadow:inset 0 0 0 3px #f1d9a8,0 10px 18px -12px rgba(0,0,0,.6)}
+.fa-it .fa-in{padding:6px;background:#fffdf8;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+.fa-it img{display:block;width:100%;aspect-ratio:4/5;object-fit:cover;cursor:zoom-in}
+.fa-cap{margin-top:8px;padding:5px 8px;border-radius:4px;background:#fffaf0;text-align:center}
+.fa-cap input{width:100%;border:0;background:none;text-align:center;font:700 11px 'Playfair Display',serif;color:#5b4524;outline:0}
+.fa-cap input.by{font:600 10px Montserrat,sans-serif;color:#8a6a3a}
+.gl-empty{margin-top:12px;padding:22px;border-radius:18px;border:1.5px dashed rgb(var(--c-f0d0d8));text-align:center;font:italic 600 12px 'Playfair Display',serif;color:rgb(var(--c-6b705c))}
+.lb-ov{position:fixed;inset:0;z-index:10070;background:rgba(20,16,20,.82);display:flex;align-items:center;justify-content:center;padding:20px;cursor:zoom-out}
+.lb-ov img{max-width:100%;max-height:100%;border-radius:10px;box-shadow:0 20px 50px rgba(0,0,0,.5)}
+/* passport */
+#tab-content-passport .ppx-top{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:0 0 12px}
+#tab-content-passport .ppx-top button{padding:5px 12px;border-radius:99px;border:1.5px solid rgb(var(--c-f0d0d8));background:#fff;font:800 10.5px Montserrat,sans-serif;color:rgb(var(--c-3e4a3d));cursor:pointer;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#tab-content-passport .ppx-top button.on{background:rgb(var(--c-fdeef2));border-color:rgb(var(--c-e8a0b4));color:rgb(var(--c-a8506a))}
+.ppx-stage{display:flex;align-items:center;justify-content:center;gap:12px}
+.ppx-nav{flex:none;width:40px;height:40px;border-radius:50%;border:2px solid rgb(var(--c-f0d0d8));background:#fff;font:800 16px sans-serif;color:rgb(var(--c-a8506a));cursor:pointer}
+.ppx-nav:disabled{opacity:.3;cursor:default}
+.ppx-page{position:relative;width:min(470px,100%);aspect-ratio:88/125;border-radius:14px 22px 22px 14px;overflow:hidden;box-shadow:0 24px 40px -24px rgba(40,20,30,.7),inset 6px 0 10px -6px rgba(0,0,0,.25);animation:ppTurn .45s ease}
+@keyframes ppTurn{from{transform:perspective(900px) rotateY(-14deg);opacity:.4}}
+.ppx-paper{background:repeating-radial-gradient(circle at 30% 40%,rgba(160,120,160,.07) 0 2px,transparent 2px 9px),repeating-linear-gradient(45deg,rgba(120,160,140,.06) 0 1px,transparent 1px 8px),linear-gradient(160deg,#fbf6ee,#f4ece0 60%,#efe6f3)}
+.ppx-cover{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;background:radial-gradient(circle at 30% 20%,rgba(255,255,255,.08),transparent 50%),repeating-linear-gradient(90deg,rgba(0,0,0,.05) 0 2px,transparent 2px 5px),linear-gradient(160deg,rgb(var(--c-7a2e45)),#3c1525);color:#f3d78a}
+.ppx-cover b{font:800 28px/1.1 'Playfair Display',serif;letter-spacing:.14em}
+.ppx-cover small{font:700 11px Montserrat,sans-serif;letter-spacing:.3em;opacity:.85}
+.ppx-cover .ppx-emb{width:120px;height:120px}
+.ppx-cover button{margin-top:10px;padding:8px 20px;border-radius:99px;border:1.5px solid #f3d78a;background:transparent;color:#f3d78a;font:800 11px Montserrat,sans-serif;letter-spacing:.12em;cursor:pointer}
+.ppx-in{position:absolute;inset:0;padding:22px 22px 16px;display:flex;flex-direction:column}
+.ppx-hd{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1.5px solid rgba(122,46,69,.25);padding-bottom:5px;margin-bottom:10px}
+.ppx-hd b{font:800 12px Montserrat,sans-serif;letter-spacing:.18em;color:rgb(var(--c-7a2e45))}.ppx-hd small{font:700 9px Montserrat,sans-serif;letter-spacing:.12em;color:#8a7a86}
+.ppx-id{display:grid;grid-template-columns:38% 1fr;gap:12px}
+.ppx-ph{position:relative;aspect-ratio:3/4;border-radius:6px;background:#efe6dc;border:1.5px dashed #c9b6a6;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;text-align:center;font:700 10px Montserrat,sans-serif;color:#8a7a86}
+.ppx-ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:sepia(.25) contrast(1.05)}
+.ppx-ph input{display:none}
+.ppx-ph::after{content:'';position:absolute;right:-14px;bottom:-14px;width:70px;height:70px;border-radius:50%;border:2px solid rgba(122,46,69,.35);background:radial-gradient(circle,rgba(122,46,69,.12),transparent 70%);pointer-events:none}
+.ppx-f{display:flex;flex-direction:column;margin-bottom:5px}
+.ppx-f label{font:700 7.5px Montserrat,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8a7a86}
+.ppx-f input{border:0;border-bottom:1px dotted rgba(122,46,69,.3);background:none;padding:1px 0;font:800 11.5px Montserrat,sans-serif;text-transform:uppercase;color:#2f2630;outline:0;min-width:0;width:100%}
+.ppx-f input:focus{border-bottom-color:rgb(var(--c-a8506a))}
+.ppx-f input.sig{font:600 18px Caveat,'Segoe Script',cursive;text-transform:none;color:#2c3a6b}
+.ppx-f2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+.ppx-mrz{margin-top:auto;padding:6px 8px;border-radius:4px;background:rgba(255,255,255,.55);font:700 10.5px/1.45 'Courier New',monospace;letter-spacing:.06em;color:#3a3138;white-space:pre;overflow:hidden}
+.ppx-visa{display:flex;flex-direction:column;height:100%}
+.ppx-st{position:relative;display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.ppx-st svg{flex:none;width:96px;height:96px;transform:rotate(var(--r));opacity:.88;mix-blend-mode:multiply}
+.ppx-st .ppx-sm{display:flex;flex-direction:column;gap:3px}
+.ppx-st .ppx-sm b{font:800 15px/1.2 'Playfair Display',serif;color:#2f2630}
+.ppx-st .ppx-sm small{font:700 9.5px Montserrat,sans-serif;letter-spacing:.06em;color:#7a6a76;text-transform:uppercase}
+.ppx-rs{position:absolute;right:0;top:4px;padding:3px 8px;border:2px solid var(--c);border-radius:4px;color:var(--c);font:800 9px 'Courier New',monospace;letter-spacing:.08em;transform:rotate(7deg);opacity:.8}
+.ppx-cvs{flex:none;display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.ppx-st{flex:none}
+.ppx-cv{position:relative;aspect-ratio:2/3;border-radius:3px 6px 6px 3px;background-size:cover;background-position:center;filter:sepia(.85) contrast(1.05) brightness(.97);box-shadow:0 4px 8px -4px rgba(60,30,20,.55),inset 2px 0 0 rgba(255,255,255,.3);cursor:pointer;transition:filter .3s,transform .2s}
+.ppx-cv:hover{filter:sepia(.2);transform:translateY(-2px) rotate(-1deg)}
+.ppx-cv span{position:absolute;inset:auto 0 0 0;padding:2px 3px;background:rgba(255,250,240,.88);font:700 7.5px/1.2 Montserrat,sans-serif;color:#4a3a30;text-align:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.ppx-pn{margin-top:auto;padding-top:6px;text-align:center;font:700 9px Montserrat,sans-serif;letter-spacing:.2em;color:#a898a4}
+.ppx-log{display:flex;flex-direction:column;gap:5px;overflow:auto}
+.ppx-log div{display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px dotted rgba(122,46,69,.25);font:700 11px Montserrat,sans-serif;color:#2f2630}
+.ppx-log div span:last-child{font-family:'Courier New',monospace;color:#7a2e45}
+.ppx-empty{margin:auto;text-align:center;font:italic 600 13px 'Playfair Display',serif;color:#7a6a76}
+@media(max-width:560px){.ppx-nav{width:32px;height:32px}.ppx-in{padding:16px 14px 12px}.ppx-cvs{grid-template-columns:repeat(3,1fr)}.ppx-st svg{width:76px;height:76px}}
+@media(prefers-reduced-motion:reduce){.ppx-page{animation:none}}
+/* little action buttons on highlights */
+.qcard-b{border:0;background:rgba(255,255,255,.9);border-radius:99px;padding:2px 8px;font:800 9.5px Montserrat,sans-serif;color:rgb(var(--c-a8506a));cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.qc-card .qcard-b{position:absolute;right:8px;bottom:8px}
+.hli .qcard-b{flex:none;align-self:center;margin-left:4px}
+</style>
+<script type="text/plain" data-app id="b5-js">
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var E = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var LS = function (k, d) { try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } };
+  var SV = function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+  var say = function (body, act) { try { window.__toast({ mode: 'cz', body: body, action: act || null }); } catch (e) {} };
+  var hash = function (s) { var h = 7; s = String(s); for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; };
+  var fin = function () { return books.filter(function (b) { return b.read && b.status !== 'abandoned' && !b.demo; }); };
+  var dur = function (b) { return +b.actualMinutes || +b.duration || 0; };
+  var cvar = function (n, a) { var v = getComputedStyle(document.documentElement).getPropertyValue('--c-' + n).trim().split(/\s+/).join(','); return v ? (a != null ? 'rgba(' + v + ',' + a + ')' : 'rgb(' + v + ')') : '#e8c4c4'; };
+  var idbOk = function () { return window.CoverDB && CoverDB.ok; };
+
+  /* ================= image index (kept in an 'enchanted' key, so it is backed up) ================= */
+  var GK = 'enchantedGallery';
+  var G = function () { var g = LS(GK, {}); g.mb = g.mb || {}; g.fa = g.fa || {}; return g; };
+  window.extraImageKeys = function () { var g = G(), out = []; Object.keys(g.mb).forEach(function (k) { (g.mb[k] || []).forEach(function (x) { out.push(x.k); }); }); Object.keys(g.fa).forEach(function (k) { (g.fa[k] || []).forEach(function (x) { out.push(x.k); }); }); if (g.pp) out.push(g.pp); return out.filter(Boolean); };
+  function storeImage(file) {
+    return CoverDB.process(file).then(function (r) { var k = 'g' + CoverDB.newKey(); return CoverDB.put(k, r.thumb, r.full, { url: URL.createObjectURL(r.thumb), w: r.w, h: r.h }).then(function () { return k; }); });
+  }
+  function lightbox(k) {
+    var ov = document.createElement('div'); ov.className = 'lb-ov'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'Picture');
+    var t = CoverDB.thumbURL(k); ov.innerHTML = t ? '<img alt="" src="' + t + '">' : '';
+    var made = null; CoverDB.fullURL(k).then(function (u) { if (!u || !ov.isConnected) { if (u) URL.revokeObjectURL(u); return; } made = u; var im = ov.querySelector('img'); if (im) im.src = u; else ov.innerHTML = '<img alt="" src="' + u + '">'; });
+    var close = function () { ov.remove(); if (made) URL.revokeObjectURL(made); document.removeEventListener('keydown', esc, true); };
+    var esc = function (e) { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
+    ov.addEventListener('click', close); document.addEventListener('keydown', esc, true); document.body.appendChild(ov);
+  }
+
+  /* ================= 1. Mood board + fan-art gallery (per book) ================= */
+  function openGallery(i, tab) {
+    var b = books[i]; if (!b) return;
+    if (!idbOk()) { cuteAlert('Pictures need the browser\u2019s image storage, which is not available here 🍄'); return; }
+    var id = String(b.id), ov = document.createElement('div'); ov.className = 'b5-ov'; tab = tab || 'mb';
+    var draw = function () {
+      var g = G(), mb = g.mb[id] || [], fa = g.fa[id] || [];
+      var body = tab === 'mb'
+        ? (mb.length ? '<div class="mb-wall">' + mb.map(function (x, n) { var u = CoverDB.thumbURL(x.k); return u ? '<div class="mb-it" style="--r:' + (((hash(x.k) % 9) - 4) * .8) + 'deg" data-lb="' + E(x.k) + '"><img alt="" src="' + u + '"><button type="button" class="gl-x" data-del="mb:' + n + '" aria-label="Remove picture">✕</button></div>' : ''; }).join('') + '</div>' : '<div class="gl-empty">🎨 Pin pictures that feel like this book: places, outfits, colours, screenshots, anything. They become a little collage wall.</div>')
+        : (fa.length ? '<div class="fa-grid">' + fa.map(function (x, n) { var u = CoverDB.thumbURL(x.k); return u ? '<div class="fa-it"><button type="button" class="gl-x" data-del="fa:' + n + '" aria-label="Remove fan art">✕</button><div class="fa-in"><img alt="" src="' + u + '" data-lb="' + E(x.k) + '"></div><div class="fa-cap"><input data-cap="' + n + '" value="' + E(x.cap || '') + '" placeholder="Title of the piece" maxlength="80"><input class="by" data-by="' + n + '" value="' + E(x.by || '') + '" placeholder="Artist (credit them 💖)" maxlength="60"></div></div>' : ''; }).join('') + '</div>' : '<div class="gl-empty">🖌️ Save fan art for this book in little gilded frames, with the title and the artist\u2019s name so they always get the credit.</div>');
+      ov.innerHTML = '<div class="b5-card" role="dialog" aria-modal="true" aria-label="Gallery"><h3>🎨 ' + E(b.title) + '</h3><p class="sub">A mood board and a fan-art gallery, just for this book. Pictures stay in this browser and go into your backups.</p>'
+        + '<div class="b5-seg"><button type="button" data-tab="mb" class="' + (tab === 'mb' ? 'on' : '') + '">🎨 Mood board (' + mb.length + ')</button><button type="button" data-tab="fa" class="' + (tab === 'fa' ? 'on' : '') + '">🖌️ Fan art (' + fa.length + ')</button></div>'
+        + '<label class="gl-up">＋ Add pictures<input type="file" accept="image/*" multiple data-up="1"></label>' + body
+        + '<div class="b5-row"><button type="button" class="b5-alt" data-x="1">Done</button></div></div>';
+    };
+    ov.addEventListener('click', function (e) {
+      if (e.target === ov) { ov.remove(); return; }
+      var t = e.target.closest('[data-tab],[data-del],[data-lb],[data-x]'); if (!t) return;
+      if (t.dataset.x != null) { ov.remove(); return; }
+      if (t.dataset.tab) { tab = t.dataset.tab; draw(); return; }
+      if (t.dataset.del) { e.stopPropagation(); var p = t.dataset.del.split(':'), g = G(); (g[p[0]][id] || []).splice(+p[1], 1); if (!(g[p[0]][id] || []).length) delete g[p[0]][id]; SV(GK, g); draw(); return; }
+      if (t.dataset.lb) lightbox(t.dataset.lb);
+    });
+    ov.addEventListener('change', function (e) {
+      var inp = e.target; if (!inp.dataset || !inp.dataset.up) return;
+      var files = [].slice.call(inp.files || []).filter(function (f) { return /^image\//.test(f.type); }); if (!files.length) return;
+      var g0 = G(), have = (g0[tab][id] || []).length, room = Math.max(0, 30 - have);
+      if (!room) { cuteAlert('That board is full (30 pictures). Remove one to add more 🌸'); return; }
+      files = files.slice(0, room);
+      var lab = inp.parentNode; lab.firstChild.textContent = '⏳ Adding ' + files.length + '…';
+      files.reduce(function (p, f) { return p.then(function (ks) { return storeImage(f).then(function (k) { ks.push(k); return ks; }, function () { return ks; }); }); }, Promise.resolve([])).then(function (ks) {
+        var g = G(); g[tab][id] = (g[tab][id] || []).concat(ks.map(function (k) { return { k: k }; })); SV(GK, g); draw();
+        if (ks.length < files.length) say('Some pictures could not be added (browser storage may be full).');
+      });
+    });
+    ov.addEventListener('input', function (e) {
+      var t = e.target, g = G(), list = g.fa[id] || [];
+      if (t.dataset.cap != null && list[+t.dataset.cap]) { list[+t.dataset.cap].cap = t.value.slice(0, 80) || undefined; SV(GK, g); }
+      if (t.dataset.by != null && list[+t.dataset.by]) { list[+t.dataset.by].by = t.value.slice(0, 60) || undefined; SV(GK, g); }
+    });
+    draw(); document.body.appendChild(ov);
+  }
+  window.openGallery = openGallery;
+  // a door from the review window (Extras)
+  var ex = $('rm-extras');
+  if (ex) {
+    var gc = document.createElement('div'); gc.className = 'rm-card y'; gc.id = 'gl-card';
+    gc.innerHTML = '<div class="rm-ch"><i>🎨</i><h5>Mood board &amp; fan art</h5><small>pictures for this book</small></div><p style="margin:0 0 8px;font-size:11.5px;color:rgb(var(--c-6b705c))">Pin pictures that feel like the book, and keep fan art with the artist\u2019s credit. A 🃏 trading card is waiting too.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="b5-btn" data-glo="mb">🎨 Mood board</button><button type="button" class="b5-btn" data-glo="fa">🖌️ Fan art</button><button type="button" class="b5-btn g" data-glo="card">🃏 Trading card</button></div>';
+    ex.appendChild(gc);
+    gc.addEventListener('click', function (e) { var t = e.target.closest('[data-glo]'); if (!t || typeof activeReviewIndex !== 'number') return; if (t.dataset.glo === 'card') openTradingCard(activeReviewIndex); else openGallery(activeReviewIndex, t.dataset.glo); });
+  }
+
+  /* ================= canvas helpers ================= */
+  function loadImg(src) { return new Promise(function (ok) { if (!src) return ok(null); var im = new Image(); if (!/^(data|blob):/.test(src)) { im.crossOrigin = 'anonymous'; im.referrerPolicy = 'no-referrer'; } var t = setTimeout(function () { ok(null); }, 7000); im.onload = function () { clearTimeout(t); ok(im); }; im.onerror = function () { clearTimeout(t); ok(null); }; im.src = src; }); }
+  function coverURL(b) { if (idbOk() && b.coverKey) return CoverDB.fullURL(b.coverKey).then(function (u) { if (u) setTimeout(function () { URL.revokeObjectURL(u); }, 60000); return u || b.cover; }); return Promise.resolve(b.cover || null); }
+  function fonts() { if (!document.fonts || !document.fonts.load) return Promise.resolve(); return Promise.all(["800 40px 'Playfair Display'", "italic 600 40px 'Playfair Display'", '800 20px Montserrat', '600 20px Montserrat'].map(function (f) { return document.fonts.load(f).catch(function () {}); })); }
+  function rr(x, X, Y, W, H, r) { x.beginPath(); x.moveTo(X + r, Y); x.arcTo(X + W, Y, X + W, Y + H, r); x.arcTo(X + W, Y + H, X, Y + H, r); x.arcTo(X, Y + H, X, Y, r); x.arcTo(X, Y, X + W, Y, r); x.closePath(); }
+  function wrap(x, text, w) { var out = [], line = ''; String(text || '').split(/\s+/).forEach(function (wd) { if (!wd) return; var t = line ? line + ' ' + wd : wd; if (x.measureText(t).width <= w) line = t; else { if (line) out.push(line); while (x.measureText(wd).width > w && wd.length > 1) { var k = wd.length; while (k > 1 && x.measureText(wd.slice(0, k)).width > w) k--; out.push(wd.slice(0, k)); wd = wd.slice(k); } line = wd; } }); if (line) out.push(line); return out; }
+  function star(x, cx, cy, r, fill) { x.beginPath(); for (var i = 0; i < 10; i++) { var a = -Math.PI / 2 + i * Math.PI / 5, rr2 = i % 2 ? r * .45 : r; x.lineTo(cx + Math.cos(a) * rr2, cy + Math.sin(a) * rr2); } x.closePath(); x.fillStyle = fill; x.fill(); }
+  function fitImg(x, im, X, Y, W, H) { var s = Math.max(W / im.width, H / im.height), w = im.width * s, h = im.height * s; x.drawImage(im, X + (W - w) / 2, Y + (H - h) / 2, w, h); }
+  function save(cv, name) { try { cv.toBlob(function (bl) { if (!bl) { cuteAlert('Could not save the image 🍂'); return; } var a = document.createElement('a'); a.href = URL.createObjectURL(bl); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 30000); }, 'image/png'); } catch (e) { cuteAlert('Could not save the image 🍂 (a cover from the web may be blocking it).'); } }
+  var slug = function (s) { return String(s || 'book').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'book'; };
+  function preview(title, sub, cls, build, fileName, extra) {
+    var ov = document.createElement('div'); ov.className = 'b5-ov';
+    ov.innerHTML = '<div class="b5-card" role="dialog" aria-modal="true" aria-label="' + E(title) + '"><h3>' + E(title) + '</h3><p class="sub">' + E(sub) + '</p>' + (extra || '') + '<div id="b5-pv"><div class="b5-wait">✨ Painting…</div></div><div class="b5-row"><button type="button" class="b5-alt" data-x="1">Close</button><button type="button" class="b5-btn" data-s="1">💾 Save as image</button></div></div>';
+    var cv = null, paint = function (opt) { var pv = ov.querySelector('#b5-pv'); return build(opt).then(function (c) { cv = c; c.className = 'b5-cv ' + cls; pv.innerHTML = ''; pv.appendChild(c); }); };
+    ov.addEventListener('click', function (e) { if (e.target === ov || e.target.closest('[data-x]')) { ov.remove(); return; } if (e.target.closest('[data-s]') && cv) save(cv, fileName()); });
+    document.body.appendChild(ov); return { ov: ov, paint: paint };
+  }
+
+  /* ================= 2. Trading cards ================= */
+  var RAR = [[4.75, 'Legendary', ['#ffd1f0', '#c8f1ff', '#fff3b0', '#d6c8ff']], [4, 'Rare', ['#f6d77c', '#e0a93b']], [3, 'Uncommon', ['#e4e8ee', '#aab3c0']], [0, 'Common', ['#f3c9a8', '#d99a7a']]];
+  function rarity(b) { var r = +b.rating || 0; for (var i = 0; i < RAR.length; i++) if (r >= RAR[i][0] && (r > 0 || i === 3)) return RAR[i]; return RAR[3]; }
+  function buildCard(b) {
+    var W = 750, H = 1050, cv = document.createElement('canvas'); cv.width = W; cv.height = H; var x = cv.getContext('2d');
+    var all = fin().slice().sort(function (p, q) { return String(p.finishedAt || '') < String(q.finishedAt || '') ? -1 : 1; }), no = all.indexOf(b) + 1;
+    return Promise.all([coverURL(b).then(loadImg), fonts()]).then(function (res) {
+      var im = res[0], R = rarity(b), g = x.createLinearGradient(0, 0, W, H);
+      R[2].forEach(function (c, k) { g.addColorStop(k / (R[2].length - 1), c); });
+      rr(x, 0, 0, W, H, 44); x.fillStyle = g; x.fill();
+      rr(x, 22, 22, W - 44, H - 44, 30); x.fillStyle = cvar('fffdfb') === '#e8c4c4' ? '#fffdfb' : '#fffdfb'; x.fill();
+      var inner = x.createLinearGradient(0, 22, 0, H - 22); inner.addColorStop(0, cvar('fdeef2')); inner.addColorStop(1, cvar('f3f6e8'));
+      rr(x, 34, 34, W - 68, H - 68, 24); x.fillStyle = inner; x.fill();
+      // title bar
+      x.fillStyle = cvar('a8506a'); x.font = "800 40px 'Playfair Display', Georgia, serif"; var tl = wrap(x, b.title, W - 220).slice(0, 2);
+      tl.forEach(function (l, k) { x.fillText(l, 62, 92 + k * 44); });
+      x.textAlign = 'right'; x.font = "800 22px Montserrat, sans-serif"; x.fillStyle = cvar('6b705c'); x.fillText('#' + String(no || 0).padStart(3, '0'), W - 62, 84);
+      x.font = "700 15px Montserrat, sans-serif"; x.fillText('of ' + all.length, W - 62, 106); x.textAlign = 'left';
+      var top = 92 + tl.length * 44 - 10;
+      // cover window
+      var cy = top + 8, ch = 430; rr(x, 60, cy, W - 120, ch, 18); x.save(); x.clip();
+      if (im) fitImg(x, im, 60, cy, W - 120, ch); else { x.fillStyle = b.coverColor || '#a3b18a'; x.fillRect(60, cy, W - 120, ch); x.fillStyle = 'rgba(255,255,255,.85)'; x.font = "800 34px 'Playfair Display', Georgia, serif"; x.textAlign = 'center'; wrap(x, b.title, W - 200).slice(0, 4).forEach(function (l, k) { x.fillText(l, W / 2, cy + 160 + k * 42); }); x.textAlign = 'left'; }
+      if (R[1] === 'Legendary') { var hg = x.createLinearGradient(60, cy, W - 60, cy + ch); ['rgba(255,120,200,.18)', 'rgba(120,220,255,.18)', 'rgba(255,240,120,.18)', 'rgba(180,140,255,.18)'].forEach(function (c, k) { hg.addColorStop(k / 3, c); }); x.fillStyle = hg; x.fillRect(60, cy, W - 120, ch); }
+      x.restore(); x.lineWidth = 4; x.strokeStyle = 'rgba(255,255,255,.9)'; rr(x, 60, cy, W - 120, ch, 18); x.stroke();
+      // type line
+      var ty = cy + ch + 40, fd = (typeof bookFandoms === 'function' ? bookFandoms(b) : [])[0], au = typeof authorText === 'function' ? authorText(b) : '';
+      rr(x, 60, ty - 28, W - 120, 42, 21); x.fillStyle = 'rgba(255,255,255,.8)'; x.fill();
+      x.fillStyle = cvar('3e4a3d'); x.font = "700 18px Montserrat, sans-serif";
+      var tline = [au ? 'by ' + au : '', fd || '', b.finishedAt ? 'Finished ' + String(b.finishedAt).slice(0, 4) : ''].filter(Boolean).join('  ·  ');
+      x.fillText(wrap(x, tline, W - 160)[0] || '', 80, ty);
+      // stats
+      var sy = ty + 34, bw = (W - 120 - 3 * 12) / 4, took = typeof daysTook === 'function' ? daysTook(b) : 0;
+      var stats = [['RATING', null], ['PAGES', b.totalPages ? String(b.totalPages) : '—'], ['HOURS', dur(b) ? String(Math.round(dur(b) / 6) / 10) : '—'], ['DAYS', took ? String(took) : '—']];
+      stats.forEach(function (s, k) {
+        var bx = 60 + k * (bw + 12); rr(x, bx, sy, bw, 92, 16); x.fillStyle = '#fff'; x.fill(); x.lineWidth = 2; x.strokeStyle = cvar('f0d0d8'); x.stroke();
+        x.fillStyle = cvar('a8506a'); x.font = "800 13px Montserrat, sans-serif"; x.textAlign = 'center'; x.fillText(s[0], bx + bw / 2, sy + 26);
+        if (s[1] === null) { var r = +b.rating || 0; for (var n = 0; n < 5; n++) { var f = Math.max(0, Math.min(1, r - n)); star(x, bx + bw / 2 - 48 + n * 24, sy + 58, 10, '#eadfe2'); if (f > 0) { x.save(); x.beginPath(); x.rect(bx + bw / 2 - 58 + n * 24, sy + 40, 20 * f, 40); x.clip(); star(x, bx + bw / 2 - 48 + n * 24, sy + 58, 10, '#f5b942'); x.restore(); } } x.fillStyle = cvar('6b705c'); x.font = '700 13px Montserrat, sans-serif'; x.fillText(r ? (Math.round(r * 10) / 10) + ' / 5' : 'unrated', bx + bw / 2, sy + 84); }
+        else { x.fillStyle = cvar('3e4a3d'); x.font = "800 30px 'Playfair Display', Georgia, serif"; x.fillText(s[1], bx + bw / 2, sy + 70); }
+        x.textAlign = 'left';
+      });
+      // tags
+      var gy = sy + 118, gx = 60, tags = (window.SAFE ? SAFE.vis(b.tags || []) : (b.tags || [])).concat(window.SAFE ? SAFE.vis(b.vibes || []) : (b.vibes || [])).slice(0, 5);
+      x.font = "800 15px Montserrat, sans-serif";
+      tags.forEach(function (t) { var tw = x.measureText('#' + t).width + 26; if (gx + tw > W - 60) return; rr(x, gx, gy - 22, tw, 32, 16); x.fillStyle = cvar('eef2e2'); x.fill(); x.fillStyle = cvar('4f5d2c'); x.fillText('#' + t, gx + 13, gy); gx += tw + 8; });
+      // flavour text
+      var q = (typeof quotesOf === 'function' ? quotesOf(b)[0] : '') || (b.review || '').trim(), fy = gy + (tags.length ? 44 : 10);
+      if (q) { x.fillStyle = cvar('8f4d62'); x.font = "italic 600 21px 'Playfair Display', Georgia, serif"; var ql = wrap(x, '“' + q + '”', W - 140), room = Math.max(1, Math.floor((H - 120 - fy) / 28)); if (ql.length > room) { ql = ql.slice(0, room); ql[room - 1] = ql[room - 1].replace(/\s*\S*$/, '') + '…'; } ql.forEach(function (l, k) { x.fillText(l, 70, fy + k * 28); }); }
+      // footer
+      x.fillStyle = cvar('6b705c'); x.font = "800 15px Montserrat, sans-serif"; x.fillText(R[1].toUpperCase() + (b.favorite ? '  ·  FAVOURITE' : ''), 62, H - 58);
+      x.textAlign = 'right'; x.fillText('THE ENCHANTED LIBRARY', W - 62, H - 58); x.textAlign = 'left';
+      star(x, W / 2, H - 64, 11, R[2][R[2].length - 1]);
+      return cv;
+    });
+  }
+  function openTradingCard(i) { var b = books[i]; if (!b) return; var pv = preview('🃏 Trading card', 'A collectible card for this book. Its rarity comes from your rating: Legendary ✨ (4.75+), Rare, Uncommon or Common.', 'card', function () { return buildCard(b); }, function () { return 'card-' + slug(b.title) + '.png'; }); pv.paint(); }
+  window.openTradingCard = openTradingCard;
+
+  /* ================= 3. Quote cards ================= */
+  var QSTY = [['theme', '🎀 My theme'], ['blush', '🌸 Blush'], ['sage', '🌿 Sage'], ['night', '🌙 Night'], ['paper', '📜 Parchment']];
+  function buildQuote(text, b, sty) {
+    var S = 1080, cv = document.createElement('canvas'); cv.width = S; cv.height = S; var x = cv.getContext('2d');
+    return fonts().then(function () {
+      var P = { theme: [cvar('fdeef2'), cvar('dfe9c6'), cvar('a8506a'), cvar('3e4a3d'), cvar('e8a0b4')], blush: ['#fde3e9', '#f6d3dd', '#a8506a', '#5a3442', '#f2b0c8'], sage: ['#eef4dc', '#d7e3b6', '#5f6e3a', '#33402a', '#b5c78a'], night: ['#27325a', '#5a4a86', '#f3d78a', '#f6f0fb', '#b8a9e6'], paper: ['#fbf3e2', '#efe1c4', '#7a4e2a', '#3c2a1a', '#d9b77a'] }[sty] || [];
+      var g = x.createLinearGradient(0, 0, S, S); g.addColorStop(0, P[0]); g.addColorStop(1, P[1]); x.fillStyle = g; x.fillRect(0, 0, S, S);
+      if (sty === 'night') { for (var i = 0; i < 60; i++) { x.fillStyle = 'rgba(255,255,255,' + (0.3 + (hash(i) % 7) / 10) + ')'; x.beginPath(); x.arc(hash(i * 7) % S, hash(i * 13) % S, 1 + hash(i) % 3, 0, 7); x.fill(); } }
+      else { x.fillStyle = 'rgba(255,255,255,.35)'; for (var k = 0; k < 14; k++) { x.beginPath(); x.arc((hash(k * 11) % S), (hash(k * 17) % S), 40 + hash(k) % 90, 0, 7); x.fill(); } }
+      x.strokeStyle = P[4]; x.lineWidth = 6; rr(x, 60, 60, S - 120, S - 120, 46); x.stroke();
+      x.setLineDash([4, 14]); x.lineWidth = 3; rr(x, 84, 84, S - 168, S - 168, 34); x.stroke(); x.setLineDash([]);
+      x.fillStyle = P[4]; x.font = "800 220px 'Playfair Display', Georgia, serif"; x.fillText('“', 120, 330);
+      var fs = 64, lines; do { x.font = "italic 600 " + fs + "px 'Playfair Display', Georgia, serif"; lines = wrap(x, text, S - 300); fs -= 3; } while (lines.length * fs * 1.38 > 560 && fs > 26);
+      fs += 3; var lh = fs * 1.38, y0 = S / 2 - (lines.length * lh) / 2 + fs * .7 - 20;
+      x.fillStyle = P[3]; x.textAlign = 'center'; lines.forEach(function (l, n) { x.fillText(l, S / 2, y0 + n * lh); });
+      var au = b && typeof authorText === 'function' ? authorText(b) : '';
+      x.fillStyle = P[2]; x.font = "800 34px 'Playfair Display', Georgia, serif"; x.fillText(b ? '— ' + b.title : '', S / 2, S - 210);
+      if (au) { x.font = '700 24px Montserrat, sans-serif'; x.fillText(au, S / 2, S - 168); }
+      star(x, S / 2 - 40, S - 118, 9, P[4]); star(x, S / 2, S - 118, 12, P[2]); star(x, S / 2 + 40, S - 118, 9, P[4]);
+      x.textAlign = 'left';
+      return cv;
+    });
+  }
+  function openQuoteCard(i, hid, rawText) {
+    var b = books[i], h = b && (b.highlights || []).filter(function (x) { return String(x.id) === String(hid); })[0], text = String((h && h.text) || rawText || '').replace(/\s*\n\s*/g, ' ').trim();
+    if (!text) return;
+    var sty = LS('enchantedQuoteStyle', 'theme');
+    var seg = '<div class="b5-seg" id="qs-seg">' + QSTY.map(function (s) { return '<button type="button" data-qs="' + s[0] + '" class="' + (s[0] === sty ? 'on' : '') + '">' + s[1] + '</button>'; }).join('') + '</div>';
+    var pv = preview('🖼️ Quote card', 'Turn this line into a pretty square picture to share or keep.', 'sq', function (o) { return buildQuote(text, b, o || sty); }, function () { return 'quote-' + slug(b ? b.title : 'quote') + '.png'; }, seg);
+    pv.ov.addEventListener('click', function (e) { var t = e.target.closest('[data-qs]'); if (!t) return; sty = t.dataset.qs; SV('enchantedQuoteStyle', sty); pv.ov.querySelectorAll('[data-qs]').forEach(function (z) { z.classList.toggle('on', z === t); }); pv.paint(sty); });
+    pv.paint(sty);
+  }
+  window.openQuoteCard = openQuoteCard;
+  // buttons on the Quotes tab and in the review window's highlights
+  if (typeof window.renderQuotes === 'function') {
+    var _rq = window.renderQuotes;
+    window.renderQuotes = function () {
+      var r = _rq.apply(this, arguments);
+      try { document.querySelectorAll('.qc-card, .qc-day').forEach(function (c) { if (c.querySelector('.qcard-b')) return; var hb = c.querySelector('.qc-heart'), m = hb && /qUnheart\((bookIx\('[^']*'\)|\d+),\s*'([^']*)'\)/.exec(hb.getAttribute('onclick') || ''); if (!m) return; var i = bookIxFrom(m[1]); if (isNaN(i)) return; c.style.position = c.style.position || 'relative'; c.insertAdjacentHTML('beforeend', '<button type="button" class="qcard-b" onclick="event.stopPropagation();openQuoteCard(' + i + ',\'' + E(m[2]) + '\')" title="Make a quote card">🖼️ Card</button>'); }); } catch (e) {}
+      return r;
+    };
+  }
+  if (typeof window.renderHl === 'function') {
+    var _rh = window.renderHl;
+    window.renderHl = function () {
+      var r = _rh.apply(this, arguments);
+      try { document.querySelectorAll('#hl-box .hli').forEach(function (row) { if (row.querySelector('.qcard-b')) return; row.insertAdjacentHTML('beforeend', '<button type="button" class="qcard-b" title="Make a quote card">🖼️</button>'); }); } catch (e) {}
+      return r;
+    };
+    document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('#hl-box .qcard-b'); if (!b) return; e.preventDefault(); var q = b.closest('.hli').querySelector('.hlt q'); if (q && typeof activeReviewIndex === 'number') openQuoteCard(activeReviewIndex, null, q.textContent); });
+  }
+
+  /* ================= 4. Book Passport ================= */
+  var PK = 'enchantedPassport', ppPage = 0, ppOpen = false;
+  var host = $('tab-content-favorites').parentNode;
+  host.insertAdjacentHTML('beforeend', '<div id="tab-content-passport" class="hidden flex-1 flex flex-col"><div class="ppx-top" id="ppx-top"></div><div class="ppx-stage"><button type="button" class="ppx-nav" id="ppx-prev" aria-label="Previous page">◀</button><div class="ppx-page" id="ppx-page"></div><button type="button" class="ppx-nav" id="ppx-next" aria-label="Next page">▶</button></div></div>');
+  var dock = $('side-dock');
+  if (dock) { var db = document.createElement('button'); db.className = 'dock-btn'; db.dataset.tab = 'passport'; db.title = 'Book Passport'; db.setAttribute('aria-label', 'Book Passport'); db.innerHTML = '📕<em class="dock-label">Book Passport</em>'; db.onclick = function () { switchTab('passport'); }; dock.appendChild(db); }
+  var STC = ['#7a2e45', '#2c5a8a', '#3f6e3a', '#8a5a12', '#5b3a8a', '#1f6b6b', '#a8506a', '#6b4a2a'];
+  function groups() {
+    var m = {}; fin().forEach(function (b) { var fs = typeof bookFandoms === 'function' ? bookFandoms(b) : []; if (!fs.length) fs = ['Uncharted Lands']; fs.forEach(function (f) { (m[f] = m[f] || []).push(b); }); });
+    return Object.keys(m).map(function (f) { var l = m[f].slice().sort(function (a, b) { return String(a.finishedAt || '') < String(b.finishedAt || '') ? -1 : 1; }); return { f: f, l: l, first: l[0] && l[0].finishedAt }; }).sort(function (a, b) { return b.l.length - a.l.length || (a.f < b.f ? -1 : 1); });
+  }
+  function pages() { var out = [{ t: 'cover' }, { t: 'id' }]; groups().forEach(function (g) { for (var k = 0; k < g.l.length; k += 12) out.push({ t: 'visa', g: g, part: k / 12, l: g.l.slice(k, k + 12), parts: Math.ceil(g.l.length / 12) }); }); out.push({ t: 'log' }); return out; }
+  var pinfo = function () { var p = LS(PK, {}); return p && typeof p === 'object' ? p : {}; };
+  function stamp(f, n, first, col, rot) {
+    var t = String(f).toUpperCase().slice(0, 26), id = 'ppc' + (hash(f) % 99999);
+    return '<svg viewBox="0 0 120 120" style="--r:' + rot + 'deg" aria-hidden="true"><defs><path id="' + id + '" d="M60,60 m-44,0 a44,44 0 1,1 88,0 a44,44 0 1,1 -88,0"/></defs><circle cx="60" cy="60" r="56" fill="none" stroke="' + col + '" stroke-width="4"/><circle cx="60" cy="60" r="34" fill="none" stroke="' + col + '" stroke-width="2" stroke-dasharray="3 3"/>'
+      + '<text font-family="Courier New, monospace" font-weight="700" font-size="11" fill="' + col + '" letter-spacing="2"><textPath href="#' + id + '" startOffset="2%">' + E(t) + ' ★ ADMITTED ★</textPath></text>'
+      + '<text x="60" y="58" text-anchor="middle" font-family="Georgia, serif" font-weight="800" font-size="22" fill="' + col + '">' + n + '</text><text x="60" y="74" text-anchor="middle" font-family="Courier New, monospace" font-weight="700" font-size="8" fill="' + col + '">' + (n === 1 ? 'BOOK' : 'BOOKS') + '</text>'
+      + (first ? '<text x="60" y="88" text-anchor="middle" font-family="Courier New, monospace" font-weight="700" font-size="7.5" fill="' + col + '">' + E(String(first).slice(0, 10)) + '</text>' : '') + '</svg>';
+  }
+  function mrz(p, no) {
+    var clean = function (s, n) { return String(s || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Z0-9]+/g, '<').replace(/^<+|<+$/g, '').slice(0, n); };
+    var l1 = ('P<RLM' + clean(p.sur || 'READER', 20) + '<<' + clean(p.given || 'BOOKWORM', 20)); l1 = (l1 + '<'.repeat(44)).slice(0, 44);
+    var dob = /^\d{4}-\d{2}-\d{2}$/.test(p.dob || '') ? p.dob.slice(2).replace(/-/g, '') : '<<<<<<';
+    var l2 = (clean(no, 9) + '<' + (hash(no) % 10) + 'RLM' + dob + (hash(dob) % 10) + 'X' + '999999' + '<'.repeat(30)).slice(0, 44);
+    return l1 + '\n' + l2;
+  }
+  function ppRender() {
+    var pg = pages(); if (ppPage >= pg.length) ppPage = pg.length - 1; if (ppPage < 0) ppPage = 0;
+    var P = pg[ppPage], box = $('ppx-page'), p = pinfo(), all = fin();
+    var no = p.no || ('ER' + String(hash((p.sur || '') + (p.given || '') + 'enchanted') % 10000000).padStart(7, '0'));
+    var first = all.map(function (b) { return b.finishedAt; }).filter(Boolean).sort()[0];
+    $('ppx-top').innerHTML = '<button type="button" data-pg="0" class="' + (ppPage <= 1 ? 'on' : '') + '">📕 Passport</button>' + groups().map(function (g) { var idx = pg.findIndex(function (x) { return x.t === 'visa' && x.g.f === g.f; }); return '<button type="button" data-pg="' + idx + '" class="' + (P.g && P.g.f === g.f ? 'on' : '') + '" title="' + E(g.f) + '">' + E(g.f) + ' · ' + g.l.length + '</button>'; }).join('') + '<button type="button" data-pg="' + (pg.length - 1) + '" class="' + (P.t === 'log' ? 'on' : '') + '">🧳 Travel log</button>';
+    box.className = 'ppx-page ' + (P.t === 'cover' ? 'ppx-cover' : 'ppx-paper'); box.style.animation = 'none'; void box.offsetWidth; box.style.animation = '';
+    if (P.t === 'cover') {
+      box.innerHTML = '<small>THE ENCHANTED LIBRARY</small><svg class="ppx-emb" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="54" fill="none" stroke="#f3d78a" stroke-width="3"/><circle cx="60" cy="60" r="46" fill="none" stroke="#f3d78a" stroke-width="1.2" stroke-dasharray="2 3"/><path d="M60 40c-8-6-20-8-30-6v42c10-2 22 0 30 6 8-6 20-8 30-6V34c-10-2-22 0-30 6z" fill="none" stroke="#f3d78a" stroke-width="3" stroke-linejoin="round"/><path d="M60 40v42" stroke="#f3d78a" stroke-width="3"/><path d="M46 26l6 7 8-10 8 10 6-7-2 12H48z" fill="#f3d78a"/></svg><b>READING<br>PASSPORT</b><small>' + all.length + ' BOOKS · ' + groups().length + ' REALMS</small><button type="button" data-open="1">OPEN ▸</button>';
+    } else if (P.t === 'id') {
+      var ph = p.photo && idbOk() ? CoverDB.thumbURL(p.photo) : null, f = function (k, lab, ph2, cls, type) { return '<div class="ppx-f"><label for="ppx-' + k + '">' + lab + '</label><input id="ppx-' + k + '" data-pp="' + k + '" class="' + (cls || '') + '" type="' + (type || 'text') + '" value="' + E(p[k] || '') + '" placeholder="' + E(ph2 || '') + '" maxlength="40"></div>'; };
+      box.innerHTML = '<div class="ppx-in"><div class="ppx-hd"><b>PASSPORT · PASSEPORT</b><small>TYPE P · CODE RLM</small></div><div class="ppx-id"><label class="ppx-ph" title="Add your photo">' + (ph ? '<img alt="Your photo" src="' + ph + '">' : '📷<br>Add your<br>photo') + '<input type="file" accept="image/*" data-photo="1"></label><div>'
+        + f('sur', 'Surname / Nom', 'Your surname') + f('given', 'Given names / Prénoms', 'Your first name') + '<div class="ppx-f2">' + f('dob', 'Date of birth', '', '', 'date') + f('pron', 'Pronouns', 'she / they…') + '</div>' + f('pob', 'Place of birth', 'Your hometown') + f('nat', 'Nationality', 'Citizen of the Realms')
+        + '</div></div><div class="ppx-f2" style="margin-top:6px">' + f('genre', 'Favourite genre', 'Romantasy') + '<div class="ppx-f"><label>Passport no.</label><input value="' + E(no) + '" readonly></div><div class="ppx-f"><label>Date of issue</label><input value="' + E(first ? String(first).slice(0, 10) : dateKey(new Date())) + '" readonly></div><div class="ppx-f"><label>Date of expiry</label><input value="NEVER ✨" readonly></div></div>'
+        + '<div class="ppx-f2"><div class="ppx-f"><label>Authority</label><input value="THE ENCHANTED LIBRARY" readonly></div>' + f('sig', 'Signature', 'Sign here', 'sig') + '</div>'
+        + '<div class="ppx-mrz" aria-label="Machine readable zone">' + E(mrz(p, no)) + '</div></div>';
+    } else if (P.t === 'visa') {
+      var g = P.g, col = STC[hash(g.f) % STC.length], rot = (hash(g.f) % 30) - 15, yrs = {};
+      g.l.forEach(function (b) { var y = String(b.finishedAt || '').slice(0, 4); if (y) yrs[y] = 1; });
+      box.innerHTML = '<div class="ppx-in ppx-visa"><div class="ppx-hd"><b>VISA · ' + E(g.f.toUpperCase().slice(0, 26)) + '</b><small>' + (P.parts > 1 ? 'PART ' + (P.part + 1) + '/' + P.parts : 'ENTRY') + '</small></div>'
+        + '<div class="ppx-st">' + stamp(g.f, g.l.length, g.first, col, rot) + '<div class="ppx-sm"><b>' + E(g.f) + '</b><small>First visit: ' + E(g.first ? String(g.first).slice(0, 10) : '—') + '</small><small>' + g.l.length + ' book' + (g.l.length === 1 ? '' : 's') + ' · ' + Object.keys(yrs).sort().join(', ') + '</small></div><span class="ppx-rs" style="--c:' + col + '">ADMITTED ' + E(Object.keys(yrs).sort().pop() || '') + '</span></div>'
+        + '<div class="ppx-cvs">' + P.l.map(function (b) { return '<div class="ppx-cv" style="' + coverStyle(b) + '" title="' + E(b.title) + '" data-ob="' + books.indexOf(b) + '"><span>' + E(b.title) + '</span></div>'; }).join('') + '</div>'
+        + '<div class="ppx-pn">— ' + (ppPage + 1) + ' —</div></div>';
+    } else {
+      var gs = groups();
+      box.innerHTML = '<div class="ppx-in"><div class="ppx-hd"><b>TRAVEL LOG</b><small>' + gs.length + ' REALMS · ' + all.length + ' BOOKS</small></div>' + (gs.length ? '<div class="ppx-log">' + gs.map(function (g) { return '<div><span>' + E(g.f) + '</span><span>' + g.l.length + ' · ' + E(g.first ? String(g.first).slice(0, 7) : '') + '</span></div>'; }).join('') + '</div>' : '<p class="ppx-empty">No stamps yet. Finish a book and its fandom stamps your first visa 🌍</p>') + '<div class="ppx-pn">— ' + (ppPage + 1) + ' —</div></div>';
+    }
+    $('ppx-prev').disabled = ppPage === 0; $('ppx-next').disabled = ppPage === pg.length - 1;
+  }
+  window.ppRender = ppRender;
+  $('ppx-prev').onclick = function () { ppPage--; ppRender(); };
+  $('ppx-next').onclick = function () { ppPage++; ppRender(); };
+  $('ppx-top').addEventListener('click', function (e) { var t = e.target.closest('[data-pg]'); if (!t) return; var n = +t.dataset.pg; ppPage = n <= 0 ? 1 : n; ppRender(); });
+  var pb = $('ppx-page');
+  pb.addEventListener('click', function (e) { if (e.target.closest('[data-open]')) { ppPage = 1; ppRender(); return; } var c = e.target.closest('[data-ob]'); if (c) { try { openBookPage(+c.dataset.ob); } catch (x) {} } });
+  pb.addEventListener('input', function (e) { var k = e.target.dataset && e.target.dataset.pp; if (!k) return; var p = pinfo(); p[k] = e.target.value.slice(0, 40) || undefined; SV(PK, p); var m = pb.querySelector('.ppx-mrz'); if (m) { var no = p.no || ('ER' + String(hash((p.sur || '') + (p.given || '') + 'enchanted') % 10000000).padStart(7, '0')); m.textContent = mrz(p, no); } });
+  pb.addEventListener('change', function (e) {
+    if (!e.target.dataset || !e.target.dataset.photo) return; var f = e.target.files && e.target.files[0]; if (!f) return;
+    if (!idbOk()) { cuteAlert('Pictures need the browser\u2019s image storage, which is not available here 🍄'); return; }
+    storeImage(f).then(function (k) { var p = pinfo(), g = G(); p.photo = k; g.pp = k; SV(PK, p); SV(GK, g); ppRender(); }, function () { cuteAlert('That picture could not be added 🍂'); });
+  });
+  document.addEventListener('keydown', function (e) { if (currentTab !== 'passport' || /INPUT|TEXTAREA/.test((document.activeElement || {}).tagName || '')) return; if (e.key === 'ArrowRight' && !$('ppx-next').disabled) { ppPage++; ppRender(); } if (e.key === 'ArrowLeft' && !$('ppx-prev').disabled) { ppPage--; ppRender(); } });
+  Hooks.on('switchTab', {
+    before: function () { var c = $('tab-content-passport'); if (c) c.classList.add('hidden'); },
+    after: function (a) {
+      var t = a[0];
+      if (t === 'passport') { $('tab-content-passport').classList.remove('hidden'); currentTab = t; $('tab-content-passport').closest('.card').classList.add('sched-fit'); ppRender(); }
+      var d2 = document.querySelector('#side-dock .dock-btn[data-tab="passport"]'); if (d2) d2.classList.toggle('active', t === 'passport');
+    }
+  });
 })();
 </script>
 <style id="fin-covers-stars-css">
