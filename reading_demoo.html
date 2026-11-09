@@ -6361,8 +6361,6 @@ body{padding-left:62px}
 #tab-content-book .rv-id{text-align:center;padding:0 4px}
 #tab-content-book .rv-id h3{font-size:clamp(13px,6.4cqi,16px);line-height:1.25;overflow-wrap:anywhere}
 #tab-content-book .rv-id .bp-au{font-size:clamp(10px,4.4cqi,11px);margin-top:2px}
-#tab-content-book .rv-id .bp-acts{justify-content:center;flex-wrap:nowrap;gap:4px;margin-top:8px}
-#tab-content-book .rv-id .bp-act{flex:0 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:clamp(8.5px,3.95cqi,10px);padding:.35em .8em;border-width:1.5px}
 #tab-content-book [data-flip]{will-change:auto}
 #tab-content-book .rv-head{position:relative;overflow:hidden;display:grid;grid-template-columns:clamp(150px,38%,270px) minmax(0,1fr);gap:20px;align-items:start;border:2px solid rgb(var(--c-e8c4c4));border-radius:22px;padding:18px;background:radial-gradient(circle at 12% 8%,#fff 0,rgb(var(--c-fdf1f1)) 45%,rgb(var(--c-f3f0e2)) 100%);box-shadow:0 5px 14px rgb(var(--c-e8a4b5)/0.2),inset 0 0 0 4px rgba(255,255,255,.7);animation:bp-in .3s ease both}
 #tab-content-book .rv-cover{position:relative;width:100%;aspect-ratio:2/3;border-radius:6px 14px 14px 6px;background-size:cover;background-position:center;box-shadow:inset 7px 0 8px -4px rgba(0,0,0,.22),inset -1px 0 0 rgba(255,255,255,.35),0 14px 28px -8px rgb(var(--c-3e4a3d)/0.45),0 3px 8px rgb(var(--c-3e4a3d)/0.18);transition:transform .3s ease,box-shadow .3s;display:flex;align-items:center;justify-content:center;overflow:hidden}
@@ -6601,10 +6599,13 @@ body{padding-left:62px}
         const ref = bookRef(b);
         return `<div class="${cls}" style="min-width:0"><h3 class="bk-title font-serif font-bold text-[rgb(var(--c-3e4a3d))]" data-flip="title">${E(b.title)}</h3>
             ${authorsOf(b).length ? `<p class="bp-au text-[11px] text-[rgb(var(--c-6b705c))] italic" data-flip="author">by ${authorLinks(b)}</p>` : ''}
-            <div class="bp-acts" data-flip="acts"><button type="button" class="bp-act pri" onclick="openReviewModal(${ref})">\u270E Edit</button>
-            <button type="button" class="bp-act" onclick="toggleFavorite(${ref});bpRender()">${b.favorite ? '\u{1F496}' : '\u{1F90D}'} Favorite</button>
-            ${typeof downloadReviewCard === 'function' ? `<button type="button" class="bp-act" onclick="downloadReviewCard(${ref})">\u2B07\uFE0F Review card</button>` : ''}
-            <button type="button" class="bp-act" onclick="openTradingCard(${ref})">\u{1F0CF} Trading card</button><button type="button" class="bp-act" onclick="openGallery(${ref})">\u{1F3A8} Mood board &amp; fan art</button></div></div>`;
+            <div class="bp-acts" data-flip="acts"><button type="button" class="bp-act pri bp-edit" onclick="openReviewModal(${ref})"><span aria-hidden="true">\u270E</span> Edit book</button>
+            <div class="bp-keeps-h" aria-hidden="true"><span>\u2727 keepsakes \u2727</span></div>
+            <div class="bp-keeps" role="group" aria-label="Keepsakes for this book">
+            <button type="button" class="bp-keep k1${b.favorite ? ' on' : ''}" onclick="toggleFavorite(${ref});bpRender()" aria-pressed="${!!b.favorite}" title="${b.favorite ? 'Remove from favorites' : 'Add to favorites'}"><i aria-hidden="true">${b.favorite ? '\u{1F496}' : '\u{1F90D}'}</i><span>Favorite</span></button>
+            ${typeof downloadReviewCard === 'function' ? `<button type="button" class="bp-keep k2" onclick="downloadReviewCard(${ref})" title="Download a review card picture"><i aria-hidden="true">\u{1F48C}</i><span>Review card</span></button>` : ''}
+            <button type="button" class="bp-keep k3" onclick="openTradingCard(${ref})" title="Open this book's trading card"><i aria-hidden="true">\u{1F0CF}</i><span>Trading card</span></button>
+            <button type="button" class="bp-keep k4" onclick="openGallery(${ref})" title="Mood board &amp; fan art"><i aria-hidden="true">\u{1F3A8}</i><span>Mood board</span></button></div></div></div>`;
     }
 
     function render() {
@@ -11353,7 +11354,7 @@ body.no-mini .tourx-mini,body.no-mini .tourx-minirow{display:none!important}
     [['#tab-content-alltime'], 'alltime', `All-Time Bracket 🏆`, 'Just for fun', `<p>A tournament between <b>every book you have finished</b>. Each duel shows two books: <b>tap the one you prefer</b>. Winners move on through the quarter-finals and semi-finals until one is crowned your <b>all-time favourite</b>.</p><ul><li>The podium shows 🥇 🥈 🥉</li><li><b>Redraw with current books</b> starts a fresh bracket (your picks are cleared)</li><li>Year in Review has the same bracket for a single year</li></ul>`],
     ],
     'book': [
-    [['#bp-root', '#tab-content-book'], null, `A book's own page 🌸`, 'Book page', `<p>Open a finished book to get its own page. Its buttons include <b>🃏 Trading card</b> (a collectible card whose rarity comes from your rating, saved as a picture) and <b>🎨 Mood board &amp; fan art</b>. <b>🌸 Details</b> shows the big cover, rating, tags, vibes and warnings and the series pop-out; <b>✍️ Review &amp; Notes</b> holds your review, feelings and quotes; <b>📊 Stats</b> shows how long it took and your reading pace. <b>← Back</b> returns to where you were.</p>`],
+    [['#bp-root', '#tab-content-book'], null, `A book's own page 🌸`, 'Book page', `<p>Open a finished book to get its own page. Under the cover, <b>✎ Edit book</b> opens the edit window, and the little <b>✧ keepsakes ✧</b> shelf holds 💖 <b>Favorite</b>, 💌 <b>Review card</b> (a picture of your review), 🃏 <b>Trading card</b> (a collectible card whose rarity comes from your rating) and 🎨 <b>Mood board</b> (with your fan art). <b>🌸 Details</b> shows the big cover, rating, tags, vibes and warnings and the series pop-out; <b>✍️ Review &amp; Notes</b> holds your review, feelings and quotes; <b>📊 Stats</b> shows how long it took and your reading pace. <b>← Back</b> returns to where you were.</p>`],
     ],
     'year': [
     [['#year-select', '#year-content'], 'year', `Year in Review 📊 (1/7)`, 'Stats', `<p>Pick a year at the top. The header is your <b>Reading Wrapped</b>: books finished, time, pages and streak, with a little title for the kind of reader you are. Sub-pages sit underneath: <b>🌟 Highlights, 📚 Bookshelf, ⏱️ Habits, 💗 Taste</b>, 🏆 Ranking, <b>🌗 Rhythm</b> and <b>⚖️ Compare</b>. Your all-time stats and medals now live in their own <b>♾️ Lifetime</b> tab (the ♾️ button at the bottom-left).</p>`, null, year('hi')],
@@ -17930,6 +17931,37 @@ p.wpx-title{display:flex!important;align-items:center;gap:12px;margin:0 0 12px!i
 .qcard-b{border:0;background:rgba(255,255,255,.9);border-radius:99px;padding:2px 8px;font:800 9.5px Montserrat,sans-serif;color:rgb(var(--c-a8506a));cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.12)}
 .qc-card .qcard-b{position:absolute;right:8px;bottom:8px}
 .hli .qcard-b{flex:none;align-self:center;margin-left:4px}
+
+/* book page: one big Edit pill + a little shelf of keepsake tiles (no more squashed row) */
+#tab-content-book .bp-acts{display:flex;flex-direction:column;align-items:stretch;gap:0;margin-top:10px}
+#tab-content-book .bp-edit{align-self:stretch;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 14px;font:800 12.5px 'Playfair Display',serif;border-radius:99px;background:linear-gradient(90deg,rgb(var(--c-a3b18a)),rgb(var(--c-8a9a5b)));border:0;color:#fff;box-shadow:0 6px 14px -8px rgb(var(--c-8a9a5b)/.9);transition:transform .15s,box-shadow .15s}
+#tab-content-book .bp-edit:hover{transform:translateY(-2px);box-shadow:0 9px 18px -8px rgb(var(--c-8a9a5b))}
+#tab-content-book .bp-keeps-h{display:flex;align-items:center;gap:8px;margin:12px 2px 7px;font:italic 700 10.5px 'Playfair Display',serif;color:rgb(var(--c-a8506a))}
+#tab-content-book .bp-keeps-h::before,#tab-content-book .bp-keeps-h::after{content:'';flex:1;border-top:2px dotted rgb(var(--c-f0c9d4))}
+#tab-content-book .bp-keeps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+#tab-content-book .bp-keep{--kb:var(--c-fdeef2);--kr:var(--c-f4c9d2);position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0;padding:9px 4px 7px;border-radius:16px;border:1.5px solid rgb(var(--kr));background:linear-gradient(180deg,#fff,rgb(var(--kb)));cursor:pointer;transition:transform .18s cubic-bezier(.3,1.5,.5,1),box-shadow .18s}
+#tab-content-book .bp-keep.k2{--kb:var(--c-fff6f4);--kr:var(--c-f1dcd2)}
+#tab-content-book .bp-keep.k3{--kb:var(--c-f6f0fb,246 240 251);--kr:var(--c-dbcdf0,219 205 240)}
+#tab-content-book .bp-keep.k4{--kb:var(--c-f3f6e8,243 246 232);--kr:var(--c-cfdbb0)}
+#tab-content-book .bp-keep:hover{transform:translateY(-3px) rotate(-1.5deg);box-shadow:0 8px 16px -10px rgb(var(--c-a8506a)/.7)}
+#tab-content-book .bp-keep:nth-child(even):hover{transform:translateY(-3px) rotate(1.5deg)}
+#tab-content-book .bp-keep:focus-visible{outline:2px solid rgb(var(--c-a8506a));outline-offset:2px}
+#tab-content-book .bp-keep i{font-style:normal;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:16px;background:#fff;box-shadow:0 0 0 1.5px rgb(var(--kr)),0 3px 8px -4px rgb(var(--c-a8506a)/.5)}
+#tab-content-book .bp-keep span{font:800 9.5px/1.2 Montserrat,sans-serif;color:rgb(var(--c-3e4a3d));text-align:center;overflow-wrap:anywhere}
+#tab-content-book .bp-keep.on{border-color:rgb(var(--c-e8a0b4));background:linear-gradient(180deg,#fff,rgb(var(--c-fbd9e2,251 217 226)))}
+#tab-content-book .bp-keep.on span{color:rgb(var(--c-a8506a))}
+#tab-content-book .bp-keep.on i{animation:bp-beat 1.6s ease-in-out infinite}
+@keyframes bp-beat{0%,100%{transform:scale(1)}15%{transform:scale(1.15)}30%{transform:scale(1)}}
+@container (max-width:300px){#tab-content-book .rv-id .bp-keeps{grid-template-columns:repeat(2,minmax(0,1fr))}#tab-content-book .rv-id .bp-keep{flex-direction:row;justify-content:flex-start;gap:7px;padding:6px 8px 6px 6px;border-radius:99px}#tab-content-book .rv-id .bp-keep i{flex:none;width:28px;height:28px;font-size:14px}#tab-content-book .rv-id .bp-keep span{text-align:left;font-size:10px}}
+/* the header version (beside the small cover on other tabs) stays one neat row, left aligned */
+#tab-content-book .bp-id .bp-acts{max-width:420px}
+#tab-content-book .bp-id .bp-edit{align-self:flex-start;padding:6px 16px;font-size:11.5px}
+#tab-content-book .bp-id .bp-keeps-h{justify-content:flex-start;margin:9px 0 6px}
+#tab-content-book .bp-id .bp-keeps-h::before{display:none}
+#tab-content-book .bp-id .bp-keep{padding:7px 3px 6px}
+#tab-content-book .bp-id .bp-keep i{width:26px;height:26px;font-size:13px}
+@media (max-width:420px){#tab-content-book .bp-keeps{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (prefers-reduced-motion:reduce){#tab-content-book .bp-keep,#tab-content-book .bp-edit{transition:none}#tab-content-book .bp-keep.on i{animation:none}}
 </style>
 <script type="text/plain" data-app id="b5-js">
 (function () {
